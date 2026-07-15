@@ -466,9 +466,14 @@
   // ---------- config ----------
   const TIER1 = [
     {id:'fg', name:'F&G 指數', en:'FEAR & GREED', unit:'', hasDelta:false,
-      ref:'綠 20–80 ・ 黃 <20 或 >80（極端區）',
-      reason:'市場情緒溫度計，極端恐懼或極端貪婪常是反向訊號。',
-      calc:(v)=> v==null?'neutral': (v<20||v>80) ? 'yellow' : 'green'
+      ref:'🟢 綠燈：45~55 (中立)<br>🟡 黃燈：25~45 (恐懼) 或 55~75 (貪婪)<br>🔴 紅燈：<25 (極度恐懼) 或 >75 (極度貪婪)',
+      reason:'同步 CNN 官方五大區間。當市場陷入「Fear」或「Greed」時點亮黃燈警戒；落入極端區間時點亮紅燈。',
+      calc:(v)=> {
+        if(v==null) return 'neutral';
+        if(v < 25 || v > 75) return 'red';      // 極度恐懼 或 極度貪婪
+        if(v < 45 || v > 55) return 'yellow';   // 恐懼 或 貪婪
+        return 'green';                         // 中立區間
+      }
     },
     {id:'vix', name:'VIX', en:'VOLATILITY INDEX', unit:'pts', hasDelta:false,
       ref:'綠 <20 ・ 黃 20–30 ・ 紅 >30',
