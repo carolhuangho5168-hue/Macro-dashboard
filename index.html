@@ -266,17 +266,6 @@
   .save-btn:hover{background:var(--accent);}
   .save-btn:active{transform:scale(0.98);}
 
-  .delta{
-    font-family:'JetBrains Mono',monospace;
-    font-size:11.5px;
-    color:var(--text-secondary);
-    margin-bottom:8px;
-    min-height:14px;
-    font-weight:600;
-  }
-  .delta.up{color:var(--red);}
-  .delta.down{color:var(--green);}
-
   .threshold-ref{
     font-family:'JetBrains Mono',monospace;
     font-size:10.5px;
@@ -284,6 +273,7 @@
     margin-bottom:8px;
     line-height:1.5;
     font-weight:500;
+    margin-top:10px;
   }
   .reason{
     font-size:12px;
@@ -465,7 +455,7 @@
 
   // ---------- config ----------
   const TIER1 = [
-    {id:'fg', name:'F&G 指數', en:'FEAR & GREED', unit:'', hasDelta:false,
+    {id:'fg', name:'F&G 指數', en:'FEAR & GREED', unit:'',
       ref:'🟢 綠燈：45~55 (中立)<br>🟡 黃燈：25~45 (恐懼) 或 55~75 (貪婪)<br>🔴 紅燈：<25 (極度恐懼) 或 >75 (極度貪婪)',
       reason:'同步 CNN 官方五大區間。當市場陷入「Fear」或「Greed」時點亮黃燈警戒；落入極端區間時點亮紅燈。',
       calc:(v)=> {
@@ -475,24 +465,22 @@
         return 'green';                         
       }
     },
-    {id:'vix', name:'VIX', en:'VOLATILITY INDEX', unit:'pts', hasDelta:false,
+    {id:'vix', name:'VIX', en:'VOLATILITY INDEX', unit:'pts',
       ref:'綠 <20 ・ 黃 20–30 ・ 紅 >30',
       reason:'選擇權隱含波動率，反映短期市場恐慌程度。',
       calc:(v)=> v==null?'neutral': v>30?'red': v>=20?'yellow':'green'
     },
-    {id:'dxy', name:'DXY 美元指數', en:'DOLLAR INDEX', unit:'pts', hasDelta:true,
-      ref:'🟡 黃燈：突破 101 或單週變動 >2%（防護警報）',
+    {id:'dxy', name:'DXY 美元指數', en:'DOLLAR INDEX', unit:'pts',
+      ref:'🟡 黃燈：突破 101 或單日變動 >2%（防護警報）',
       reason:'全球風險資產的資金定價總閘門。本表設有絕對值與波動幅度的雙重防護警報。',
       calc:(v,d)=> {
         if(v==null) return 'neutral';
-        // 1. 絕對高度判定
         if(v >= 101) return 'yellow';
-        // 2. 單週波動變動率判定
         if(d!=null && Math.abs(d)>2) return 'yellow';
         return 'green';
       }
     },
-    {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%', hasDelta:true,
+    {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%',
       ref:'🔴 紅燈：突破 4.5% 或單日變動 >15bp<br>🟡 黃燈：4.0%~4.5% 或單日變動 8~15bp',
       reason:'無風險利率基準，本表設有絕對高度與單日波動的【雙重防護警報】。',
       calc:(v,d)=> {
@@ -507,7 +495,7 @@
         return 'green';
       }
     },
-    {id:'us30y', name:'美債 30Y 殖利率', en:'US 30Y YIELD', unit:'%', hasDelta:true,
+    {id:'us30y', name:'美債 30Y 殖利率', en:'US 30Y YIELD', unit:'%',
       ref:'🔴 紅燈：突破 5.0% 或單日變動 >15bp<br>🟡 黃燈：4.5%~5.0% 或單日變動 8~15bp',
       reason:'長天期通膨預期與財政壓力的定價，本表設有【雙重防護警報】。',
       calc:(v,d)=> {
@@ -522,12 +510,12 @@
         return 'green';
       }
     },
-    {id:'gold', name:'黃金價格', en:'GOLD (USD/OZ)', unit:'USD', hasDelta:true,
+    {id:'gold', name:'黃金價格', en:'GOLD (USD/OZ)', unit:'USD',
       ref:'黃：單日變動 >2%（避險需求升溫）',
       reason:'避險資產與實質利率的鏡像走勢。',
       calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>2)?'yellow':'green'
     },
-    {id:'oil', name:'原油價格 (WTI)', en:'WTI CRUDE', unit:'USD', hasDelta:true,
+    {id:'oil', name:'原油價格 (WTI)', en:'WTI CRUDE', unit:'USD',
       ref:'綠 <3% ・ 黃 3–5% ・ 紅 >5%（單日變動）',
       reason:'通膨與地緣政治風險的即時反應指標。',
       calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>5)?'red': (d!=null && Math.abs(d)>3)?'yellow':'green'
@@ -535,22 +523,22 @@
   ];
 
   const TIER2 = [
-    {id:'move', name:'MOVE 指數', en:'BOND VOLATILITY', unit:'pts', hasDelta:false,
+    {id:'move', name:'MOVE 指數', en:'BOND VOLATILITY', unit:'pts',
       ref:'綠 <100 ・ 黃 100–130 ・ 紅 >130',
       reason:'債券版 VIX，反映利率市場的波動與壓力。',
       calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
     },
-    {id:'hyoas', name:'HY OAS 信用利差', en:'ICE BOFA HY OAS', unit:'bps', hasDelta:false,
+    {id:'hyoas', name:'HY OAS 信用利差', en:'ICE BOFA HY OAS', unit:'bps',
       ref:'綠 <350 ・ 黃 350–500 ・ 紅 >500',
       reason:'信用市場對企業違約風險的定價，常領先股市 2–4 週。目前約 270bp，處於歷史偏樂觀區間。',
       calc:(v)=> v==null?'neutral': v>500?'red': v>=350?'yellow':'green'
     },
-    {id:'t10y2y', name:'T10Y2Y 殖利率曲線', en:'2S10S SPREAD', unit:'%', hasDelta:false,
+    {id:'t10y2y', name:'T10Y2Y 殖利率曲線', en:'2S10S SPREAD', unit:'%',
       ref:'綠 >0（正常）・ 黃 -0.1〜0（接近倒掛）・ 紅 <-0.1（倒掛）',
       reason:'史上最可靠的衰退領先指標之一，目前約 +0.3〜0.5%，已脫離倒掛。',
       calc:(v)=> v==null?'neutral': v<-0.1?'red': v<0?'yellow':'green'
     },
-    {id:'vvix', name:'VVIX', en:'VOL OF VIX', unit:'pts', hasDelta:false,
+    {id:'vvix', name:'VVIX', en:'VOL OF VIX', unit:'pts',
       ref:'綠 <100 ・ 黃 100–130 ・ 紅 >130',
       reason:'VIX 的波動率，反映尾端風險（黑天鵝事件）的定價。',
       calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
@@ -605,7 +593,6 @@
         <span class="unit">${cfg.unit}</span>
         <button class="save-btn" data-role="save">更新</button>
       </div>
-      ${cfg.hasDelta ? '<div class="delta" data-role="delta"></div>' : ''}
       <div class="threshold-ref">${cfg.ref}</div>
       <div class="reason">${cfg.reason}</div>
       <div class="meta" data-role="meta">尚未更新</div>
@@ -614,7 +601,6 @@
     const input = card.querySelector('[data-role="input"]');
     const badge = card.querySelector('[data-role="badge"]');
     const meta = card.querySelector('[data-role="meta"]');
-    const deltaEl = card.querySelector('[data-role="delta"]');
     const saveBtn = card.querySelector('[data-role="save"]');
 
     function applyStatus(status){
@@ -629,11 +615,8 @@
         input.value = rec.value;
         meta.textContent = fmtTime(rec.date);
         let d = null;
-        if(cfg.hasDelta && rec.prev != null){
+        if(rec.prev != null){
           d = rec.value - rec.prev;
-          const pct = rec.prev !== 0 ? (d/rec.prev*100) : 0;
-          deltaEl.textContent = (d>=0?'▲ +':'▼ ') + pct.toFixed(2) + '% vs 前次';
-          deltaEl.className = 'delta ' + (d>0?'up': d<0?'down':'');
         }
         const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prev||1)*100) : null) : d);
         applyStatus(status);
@@ -759,7 +742,7 @@
     const prevNet = prevRec ? (prevRec.walcl - prevRec.tga - prevRec.rrp) : null;
     const ok = await saveMetric('netliq', {walcl, tga, rrp, prevNet, date: new Date().toISOString()});
     if(ok){
-      showToast('Net Liquidity 已更新');
+      showToast('Net Liquidity 已 updated');
       await refreshLiq();
       updateSummary();
     } else {
