@@ -470,9 +470,9 @@
       reason:'同步 CNN 官方五大區間。當市場陷入「Fear」或「Greed」時點亮黃燈警戒；落入極端區間時點亮紅燈。',
       calc:(v)=> {
         if(v==null) return 'neutral';
-        if(v < 25 || v > 75) return 'red';      // 極度恐懼 或 極度貪婪
-        if(v < 45 || v > 55) return 'yellow';   // 恐懼 或 貪婪
-        return 'green';                         // 中立區間
+        if(v < 25 || v > 75) return 'red';      
+        if(v < 45 || v > 55) return 'yellow';   
+        return 'green';                         
       }
     },
     {id:'vix', name:'VIX', en:'VOLATILITY INDEX', unit:'pts', hasDelta:false,
@@ -481,19 +481,24 @@
       calc:(v)=> v==null?'neutral': v>30?'red': v>=20?'yellow':'green'
     },
     {id:'dxy', name:'DXY 美元指數', en:'DOLLAR INDEX', unit:'pts', hasDelta:true,
-      ref:'黃：單週變動 >2%（留意流動性緊縮/資金成本變化）',
-      reason:'全球風險資產與新興市場資金成本的指標。',
-      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>2)?'yellow':'green'
+      ref:'🟡 黃燈：突破 101 或單週變動 >2%（防護警報）',
+      reason:'全球風險資產的資金定價總閘門。本表設有絕對值與波動幅度的雙重防護警報。',
+      calc:(v,d)=> {
+        if(v==null) return 'neutral';
+        // 1. 絕對高度判定
+        if(v >= 101) return 'yellow';
+        // 2. 單週波動變動率判定
+        if(d!=null && Math.abs(d)>2) return 'yellow';
+        return 'green';
+      }
     },
     {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%', hasDelta:true,
       ref:'🔴 紅燈：突破 4.5% 或單日變動 >15bp<br>🟡 黃燈：4.0%~4.5% 或單日變動 8~15bp',
       reason:'無風險利率基準，本表設有絕對高度與單日波動的【雙重防護警報】。',
       calc:(v,d)=> {
         if(v==null) return 'neutral';
-        // 絕對高度判定
         if(v > 4.5) return 'red';
         if(v >= 4.0) return 'yellow';
-        // 波動速度 (bp) 判定
         if(d != null) {
           const bp = Math.abs(d) * 100;
           if(bp > 15) return 'red';
@@ -507,10 +512,8 @@
       reason:'長天期通膨預期與財政壓力的定價，本表設有【雙重防護警報】。',
       calc:(v,d)=> {
         if(v==null) return 'neutral';
-        // 絕對高度判定
         if(v > 5.0) return 'red';
         if(v >= 4.5) return 'yellow';
-        // 波動速度 (bp) 判定
         if(d != null) {
           const bp = Math.abs(d) * 100;
           if(bp > 15) return 'red';
