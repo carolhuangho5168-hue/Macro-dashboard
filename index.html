@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>總體風險儀表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#0A0E12;
+    --bg-panel:#12181F;
+    --bg-panel-raised:#161D26;
+    --border:#232C36;
+    --border-soft:#1A222B;
+    --text-primary:#E7ECF1;
+    --text-secondary:#8B98A5;
+    --text-tertiary:#5A6672;
+    --accent:#C9A24B;
+    --accent-dim:#8A7238;
+    --green:#3FB68B;
+    --green-dim:rgba(63,182,139,0.12);
+    --yellow:#E0B84C;
+    --yellow-dim:rgba(224,184,76,0.12);
+    --red:#E0604C;
+    --red-dim:rgba(224,96,76,0.12);
+    --neutral:#45505C;
+    --neutral-dim:rgba(69,80,92,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg-base);}
+  body{
+    font-family:'Noto Sans TC','Space Grotesk',system-ui,sans-serif;
+    color:var(--text-primary);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
+
+  /* header */
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.18em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin-bottom:8px;
+    font-weight:600;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:26px;
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    color:var(--text-secondary);
+    font-size:13px;
+    margin:0 0 20px;
+  }
+
+  /* summary bar */
+  .summary{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:22px;
+  }
+  .summary-label{
+    font-size:12px;
+    color:var(--text-tertiary);
+    margin-right:4px;
+    font-family:'JetBrains Mono',monospace;
+    letter-spacing:0.03em;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:12px;
+    font-family:'JetBrains Mono',monospace;
+    font-weight:600;
+  }
+  .pill .dot{width:7px;height:7px;border-radius:50%;}
+  .pill.green{background:var(--green-dim);color:var(--green);}
+  .pill.yellow{background:var(--yellow-dim);color:var(--yellow);}
+  .pill.red{background:var(--red-dim);color:var(--red);}
+  .pill .dot.green{background:var(--green);}
+  .pill .dot.yellow{background:var(--yellow);}
+  .pill .dot.red{background:var(--red);}
+  .summary-note{
+    margin-left:auto;
+    font-size:11.5px;
+    color:var(--text-tertiary);
+  }
+
+  /* tabs */
+  .tabs{
+    display:flex;
+    gap:2px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:22px;
+  }
+  .tab-btn{
+    background:none;
+    border:none;
+    color:var(--text-tertiary);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:10px 18px 12px;
+    cursor:pointer;
+    position:relative;
+    letter-spacing:0.01em;
+  }
+  .tab-btn .tab-sub{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    font-weight:400;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-top:2px;
+    color:var(--text-tertiary);
+  }
+  .tab-btn.active{color:var(--text-primary);}
+  .tab-btn.active .tab-sub{color:var(--accent);}
+  .tab-btn.active::after{
+    content:'';
+    position:absolute;
+    left:0;right:0;bottom:-1px;
+    height:2px;
+    background:var(--accent);
+    border-radius:2px 2px 0 0;
+  }
+  .tab-btn:hover{color:var(--text-primary);}
+
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;animation:fadein 0.25s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .tab-intro{
+    font-size:12.5px;
+    color:var(--text-secondary);
+    margin:0 0 16px;
+    line-height:1.6;
+    padding:10px 14px;
+    background:var(--bg-panel-raised);
+    border-left:2px solid var(--accent-dim);
+    border-radius:4px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:14px;
+  }
+
+  /* card */
+  .card{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    position:relative;
+    border-left:3px solid var(--neutral);
+    transition:border-color 0.3s ease;
+  }
+  .card[data-status="green"]{border-left-color:var(--green);}
+  .card[data-status="yellow"]{border-left-color:var(--yellow);}
+  .card[data-status="red"]{border-left-color:var(--red);}
+
+  .card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:10px;
+  }
+  .card-name{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:15px;
+    font-weight:700;
+  }
+  .card-name .en{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    font-weight:400;
+    color:var(--text-tertiary);
+    letter-spacing:0.04em;
+    margin-top:2px;
+  }
+  .status-badge{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:20px;
+    letter-spacing:0.03em;
+    white-space:nowrap;
+  }
+  .status-badge.green{background:var(--green-dim);color:var(--green);}
+  .status-badge.yellow{background:var(--yellow-dim);color:var(--yellow);}
+  .status-badge.red{background:var(--red-dim);color:var(--red);}
+  .status-badge.neutral{background:var(--neutral-dim);color:var(--text-tertiary);}
+
+  .input-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .input-row input{
+    flex:1;
+    min-width:0;
+    background:var(--bg-base);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;
+    padding:8px 10px;
+    border-radius:7px;
+    outline:none;
+  }
+  .input-row input:focus{border-color:var(--accent-dim);}
+  .input-row .unit{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--text-tertiary);
+    align-self:center;
+    min-width:34px;
+  }
+  .save-btn{
+    background:var(--accent);
+    border:none;
+    color:#1A1305;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+    padding:0 14px;
+    border-radius:7px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .save-btn:hover{filter:brightness(1.08);}
+  .save-btn:active{filter:brightness(0.95);}
+
+  .delta{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--text-secondary);
+    margin-bottom:8px;
+    min-height:14px;
+  }
+  .delta.up{color:var(--red);}
+  .delta.down{color:var(--green);}
+
+  .threshold-ref{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-tertiary);
+    margin-bottom:8px;
+    line-height:1.5;
+  }
+  .reason{
+    font-size:12px;
+    color:var(--text-secondary);
+    line-height:1.55;
+    border-top:1px solid var(--border-soft);
+    padding-top:8px;
+    margin-top:2px;
+  }
+  .meta{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--text-tertiary);
+    margin-top:8px;
+  }
+
+  /* net liquidity special card */
+  .liq-card{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    border-left:3px solid var(--neutral);
+  }
+  .liq-card[data-status="green"]{border-left-color:var(--green);}
+  .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
+  .liq-card[data-status="red"]{border-left-color:var(--red);}
+  .liq-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:12px;
+    margin:14px 0;
+  }
+  .liq-field label{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-tertiary);
+    margin-bottom:5px;
+    letter-spacing:0.03em;
+  }
+  .liq-field input{
+    width:100%;
+    background:var(--bg-base);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;
+    padding:8px 10px;
+    border-radius:7px;
+    outline:none;
+  }
+  .liq-field input:focus{border-color:var(--accent-dim);}
+  .liq-result{
+    background:var(--bg-panel-raised);
+    border-radius:8px;
+    padding:14px 16px;
+    margin:14px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .liq-result .num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:22px;
+    font-weight:700;
+  }
+  .liq-result .lbl{
+    font-size:11.5px;
+    color:var(--text-tertiary);
+    font-family:'JetBrains Mono',monospace;
+    letter-spacing:0.03em;
+  }
+
+  .reset-line{
+    text-align:center;
+    margin-top:28px;
+  }
+  .reset-line button{
+    background:none;
+    border:1px solid var(--border);
+    color:var(--text-tertiary);
+    font-size:11.5px;
+    padding:7px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .reset-line button:hover{color:var(--text-secondary);border-color:var(--text-tertiary);}
+
+  .toast{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--bg-panel-raised);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    font-size:12.5px;
+    padding:10px 18px;
+    border-radius:8px;
+    opacity:0;
+    pointer-events:none;
+    transition:all 0.25s ease;
+    z-index:100;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:520px){
+    .grid{grid-template-columns:1fr;}
+    h1{font-size:22px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">MACRO RISK MONITOR</div>
+  <h1>總體風險儀表板</h1>
+  <p class="subtitle">依查看頻率分層:每日速覽、每週檢視、結構性追蹤 — 數值輸入後自動儲存</p>
+
+  <div class="summary" id="summaryBar">
+    <span class="summary-label">整體燈號</span>
+    <span class="pill green"><span class="dot green"></span><span id="cntGreen">0</span> 綠燈</span>
+    <span class="pill yellow"><span class="dot yellow"></span><span id="cntYellow">0</span> 黃燈</span>
+    <span class="pill red"><span class="dot red"></span><span id="cntRed">0</span> 紅燈</span>
+    <span class="summary-note">紅/黃燈同時出現 2 項以上，建議重新檢視配置</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="t1">Tier 1<span class="tab-sub">每日速覽</span></button>
+    <button class="tab-btn" data-tab="t2">Tier 2<span class="tab-sub">每週檢視</span></button>
+    <button class="tab-btn" data-tab="t3">Tier 3<span class="tab-sub">結構性追蹤</span></button>
+  </div>
+
+  <!-- TIER 1 -->
+  <div class="tab-panel active" id="panel-t1">
+    <p class="tab-intro">每天 10–30 秒快速掃描即可，只需注意是否觸及警戒門檻，不需要細讀每日漲跌。</p>
+    <div class="grid" id="grid-t1"></div>
+  </div>
+
+  <!-- TIER 2 -->
+  <div class="tab-panel" id="panel-t2">
+    <p class="tab-intro">結構性變化以週為單位，每天盯盤多為雜訊。建議固定每週五收盤後檢視一次。</p>
+    <div class="grid" id="grid-t2"></div>
+  </div>
+
+  <!-- TIER 3 -->
+  <div class="tab-panel" id="panel-t3">
+    <p class="tab-intro">Fed 資料本身每週更新（WALCL 每週三、TGA 為週平均），此分頁重點在辨識結構性轉折，而非每日訊號。</p>
+    <div id="liqContainer"></div>
+  </div>
+
+  <div class="reset-line">
+    <button id="resetBtn">清除所有已儲存數值</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+  // ---------- config ----------
+  const TIER1 = [
+    {id:'fg', name:'F&G 指數', en:'FEAR & GREED', unit:'', hasDelta:false,
+      ref:'綠 20–80 ・ 黃 <20 或 >80（極端區）',
+      reason:'市場情緒溫度計，極端恐懼或極端貪婪常是反向訊號。',
+      calc:(v)=> v==null?'neutral': (v<20||v>80) ? 'yellow' : 'green'
+    },
+    {id:'vix', name:'VIX', en:'VOLATILITY INDEX', unit:'pts', hasDelta:false,
+      ref:'綠 <20 ・ 黃 20–30 ・ 紅 >30',
+      reason:'選擇權隱含波動率，反映短期市場恐慌程度。',
+      calc:(v)=> v==null?'neutral': v>30?'red': v>=20?'yellow':'green'
+    },
+    {id:'dxy', name:'DXY 美元指數', en:'DOLLAR INDEX', unit:'pts', hasDelta:true,
+      ref:'黃：單週變動 >2%（留意流動性緊縮/資金成本變化）',
+      reason:'全球風險資產與新興市場資金成本的指標。',
+      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>2)?'yellow':'green'
+    },
+    {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%', hasDelta:true,
+      ref:'綠 單日 <8bp ・ 黃 8–15bp ・ 紅 >15bp',
+      reason:'無風險利率基準，影響股票估值與房貸利率。',
+      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)*100>15)?'red': (d!=null && Math.abs(d)*100>8)?'yellow':'green'
+    },
+    {id:'us30y', name:'美債 30Y 殖利率', en:'US 30Y YIELD', unit:'%', hasDelta:true,
+      ref:'綠 單日 <8bp ・ 黃 8–15bp ・ 紅 >15bp',
+      reason:'長天期通膨預期與財政壓力的定價。',
+      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)*100>15)?'red': (d!=null && Math.abs(d)*100>8)?'yellow':'green'
+    },
+    {id:'gold', name:'黃金價格', en:'GOLD (USD/OZ)', unit:'USD', hasDelta:true,
+      ref:'黃：單日變動 >2%（避險需求升溫）',
+      reason:'避險資產與實質利率的鏡像走勢。',
+      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>2)?'yellow':'green'
+    },
+    {id:'oil', name:'原油價格 (WTI)', en:'WTI CRUDE', unit:'USD', hasDelta:true,
+      ref:'綠 <3% ・ 黃 3–5% ・ 紅 >5%（單日變動）',
+      reason:'通膨與地緣政治風險的即時反應指標。',
+      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>5)?'red': (d!=null && Math.abs(d)>3)?'yellow':'green'
+    },
+  ];
+
+  const TIER2 = [
+    {id:'move', name:'MOVE 指數', en:'BOND VOLATILITY', unit:'pts', hasDelta:false,
+      ref:'綠 <100 ・ 黃 100–130 ・ 紅 >130',
+      reason:'債券版 VIX，反映利率市場的波動與壓力。',
+      calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
+    },
+    {id:'hyoas', name:'HY OAS 信用利差', en:'ICE BOFA HY OAS', unit:'bps', hasDelta:false,
+      ref:'綠 <350 ・ 黃 350–500 ・ 紅 >500',
+      reason:'信用市場對企業違約風險的定價，常領先股市 2–4 週。目前約 270bp，處於歷史偏樂觀區間。',
+      calc:(v)=> v==null?'neutral': v>500?'red': v>=350?'yellow':'green'
+    },
+    {id:'t10y2y', name:'T10Y2Y 殖利率曲線', en:'2S10S SPREAD', unit:'%', hasDelta:false,
+      ref:'綠 >0（正常）・ 黃 -0.1〜0（接近倒掛）・ 紅 <-0.1（倒掛）',
+      reason:'史上最可靠的衰退領先指標之一，目前約 +0.3〜0.5%，已脫離倒掛。',
+      calc:(v)=> v==null?'neutral': v<-0.1?'red': v<0?'yellow':'green'
+    },
+    {id:'vvix', name:'VVIX', en:'VOL OF VIX', unit:'pts', hasDelta:false,
+      ref:'綠 <100 ・ 黃 100–130 ・ 紅 >130',
+      reason:'VIX 的波動率，反映尾端風險（黑天鵝事件）的定價。',
+      calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
+    },
+  ];
+
+  const STATUS_LABEL = {green:'綠燈',yellow:'黃燈',red:'紅燈',neutral:'尚無資料'};
+
+  // ---------- storage helpers ----------
+  async function loadMetric(id){
+    try{
+      const r = await window.storage.get('metric:'+id, false);
+      return r ? JSON.parse(r.value) : null;
+    }catch(e){ return null; }
+  }
+  async function saveMetric(id, data){
+    try{
+      await window.storage.set('metric:'+id, JSON.stringify(data), false);
+      return true;
+    }catch(e){ return false; }
+  }
+  async function deleteMetric(id){
+    try{ await window.storage.delete('metric:'+id, false); }catch(e){}
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  function fmtTime(iso){
+    if(!iso) return '尚未更新';
+    const d = new Date(iso);
+    return '上次更新: ' + d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  // ---------- card builder ----------
+  function buildCard(cfg){
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.status = 'neutral';
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
+        <span class="status-badge neutral" data-role="badge">尚無資料</span>
+      </div>
+      <div class="input-row">
+        <input type="number" step="any" placeholder="輸入最新數值" data-role="input">
+        <span class="unit">${cfg.unit}</span>
+        <button class="save-btn" data-role="save">更新</button>
+      </div>
+      ${cfg.hasDelta ? '<div class="delta" data-role="delta"></div>' : ''}
+      <div class="threshold-ref">${cfg.ref}</div>
+      <div class="reason">${cfg.reason}</div>
+      <div class="meta" data-role="meta">尚未更新</div>
+    `;
+
+    const input = card.querySelector('[data-role="input"]');
+    const badge = card.querySelector('[data-role="badge"]');
+    const meta = card.querySelector('[data-role="meta"]');
+    const deltaEl = card.querySelector('[data-role="delta"]');
+    const saveBtn = card.querySelector('[data-role="save"]');
+
+    function applyStatus(status){
+      card.dataset.status = status;
+      badge.className = 'status-badge ' + status;
+      badge.textContent = STATUS_LABEL[status];
+    }
+
+    async function refresh(){
+      const rec = await loadMetric(cfg.id);
+      if(rec && rec.value != null){
+        input.value = rec.value;
+        meta.textContent = fmtTime(rec.date);
+        let d = null;
+        if(cfg.hasDelta && rec.prev != null){
+          d = rec.value - rec.prev;
+          const pct = rec.prev !== 0 ? (d/rec.prev*100) : 0;
+          deltaEl.textContent = (d>=0?'▲ +':'▼ ') + pct.toFixed(2) + '% vs 前次';
+          deltaEl.className = 'delta ' + (d>0?'up': d<0?'down':'');
+        }
+        const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prev||1)*100) : null) : d);
+        applyStatus(status);
+      }
+    }
+
+    saveBtn.addEventListener('click', async ()=>{
+      const val = parseFloat(input.value);
+      if(isNaN(val)){ showToast('請輸入有效數值'); return; }
+      const prevRec = await loadMetric(cfg.id);
+      const prevVal = prevRec ? prevRec.value : null;
+      const newRec = {value: val, prev: prevVal, date: new Date().toISOString()};
+      const ok = await saveMetric(cfg.id, newRec);
+      if(ok){
+        showToast(cfg.name + ' 已更新');
+        await refresh();
+        updateSummary();
+      } else {
+        showToast('儲存失敗，請稍後再試');
+      }
+    });
+
+    refresh();
+    return {card, refresh};
+  }
+
+  // ---------- render tiers ----------
+  const allCards = [];
+
+  function renderGrid(gridId, list){
+    const grid = document.getElementById(gridId);
+    list.forEach(cfg=>{
+      const {card, refresh} = buildCard(cfg);
+      grid.appendChild(card);
+      allCards.push({cfg, card, refresh});
+    });
+  }
+  renderGrid('grid-t1', TIER1);
+  renderGrid('grid-t2', TIER2);
+
+  // ---------- Net Liquidity (Tier 3) ----------
+  const liqContainer = document.getElementById('liqContainer');
+  liqContainer.innerHTML = `
+    <div class="liq-card" id="liqCard">
+      <div class="card-head">
+        <div class="card-name">Net Liquidity<span class="en">WALCL − TGA − ON RRP</span></div>
+        <span class="status-badge neutral" id="liqBadge">尚無資料</span>
+      </div>
+      <div class="liq-grid">
+        <div class="liq-field">
+          <label>WALCL 總資產 ($B)</label>
+          <input type="number" step="any" id="liq-walcl" placeholder="例如 6500">
+        </div>
+        <div class="liq-field">
+          <label>TGA 財政部帳戶 ($B)</label>
+          <input type="number" step="any" id="liq-tga" placeholder="例如 850">
+        </div>
+        <div class="liq-field">
+          <label>ON RRP 隔夜逆回購 ($B)</label>
+          <input type="number" step="any" id="liq-rrp" placeholder="例如 150">
+        </div>
+      </div>
+      <button class="save-btn" id="liqSave" style="padding:10px 20px;">更新並計算</button>
+      <div class="liq-result">
+        <div>
+          <div class="lbl">NET LIQUIDITY</div>
+          <div class="num" id="liqNum">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="lbl">較上次</div>
+          <div class="num" id="liqDelta" style="font-size:15px;">—</div>
+        </div>
+      </div>
+      <div class="threshold-ref">
+        ON RRP 緩衝：綠 &gt;200 ・ 黃 50–200 ・ 紅 &lt;50（緩衝耗盡，QT 將直接衝擊市場流動性）
+      </div>
+      <div class="reason">
+        真正影響市場的是淨流動性，而非單看 Fed 資產負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT 期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
+      </div>
+      <div class="meta" id="liqMeta">尚未更新</div>
+    </div>
+  `;
+
+  async function refreshLiq(){
+    const rec = await loadMetric('netliq');
+    const badge = document.getElementById('liqBadge');
+    const num = document.getElementById('liqNum');
+    const deltaEl = document.getElementById('liqDelta');
+    const meta = document.getElementById('liqMeta');
+    const card = document.getElementById('liqCard');
+    if(rec && rec.walcl != null){
+      document.getElementById('liq-walcl').value = rec.walcl;
+      document.getElementById('liq-tga').value = rec.tga;
+      document.getElementById('liq-rrp').value = rec.rrp;
+      const net = rec.walcl - rec.tga - rec.rrp;
+      num.textContent = '$' + net.toLocaleString('en-US',{maximumFractionDigits:0}) + 'B';
+      meta.textContent = fmtTime(rec.date);
+      if(rec.prevNet != null){
+        const d = net - rec.prevNet;
+        deltaEl.textContent = (d>=0?'+':'') + d.toLocaleString('en-US',{maximumFractionDigits:0}) + 'B';
+        deltaEl.style.color = d < -100 ? 'var(--red)' : d < 0 ? 'var(--yellow)' : 'var(--green)';
+      } else {
+        deltaEl.textContent = '—';
+      }
+      // status driven primarily by ON RRP buffer depletion risk
+      let status = 'green';
+      if(rec.rrp < 50) status = 'red';
+      else if(rec.rrp < 200) status = 'yellow';
+      card.dataset.status = status;
+      badge.className = 'status-badge ' + status;
+      badge.textContent = STATUS_LABEL[status];
+    }
+  }
+
+  document.getElementById('liqSave').addEventListener('click', async ()=>{
+    const walcl = parseFloat(document.getElementById('liq-walcl').value);
+    const tga = parseFloat(document.getElementById('liq-tga').value);
+    const rrp = parseFloat(document.getElementById('liq-rrp').value);
+    if(isNaN(walcl) || isNaN(tga) || isNaN(rrp)){ showToast('請完整輸入三個數值'); return; }
+    const prevRec = await loadMetric('netliq');
+    const prevNet = prevRec ? (prevRec.walcl - prevRec.tga - prevRec.rrp) : null;
+    const ok = await saveMetric('netliq', {walcl, tga, rrp, prevNet, date: new Date().toISOString()});
+    if(ok){
+      showToast('Net Liquidity 已更新');
+      await refreshLiq();
+      updateSummary();
+    } else {
+      showToast('儲存失敗，請稍後再試');
+    }
+  });
+
+  refreshLiq();
+
+  // ---------- summary ----------
+  function updateSummary(){
+    let g=0,y=0,r=0;
+    allCards.forEach(({card})=>{
+      const s = card.dataset.status;
+      if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
+    });
+    const liqCard = document.getElementById('liqCard');
+    if(liqCard){
+      const s = liqCard.dataset.status;
+      if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
+    }
+    document.getElementById('cntGreen').textContent = g;
+    document.getElementById('cntYellow').textContent = y;
+    document.getElementById('cntRed').textContent = r;
+  }
+  setTimeout(updateSummary, 400);
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- reset ----------
+  document.getElementById('resetBtn').addEventListener('click', async ()=>{
+    if(!confirm('確定要清除所有已儲存的數值嗎？此動作無法復原。')) return;
+    const ids = [...TIER1, ...TIER2].map(c=>c.id).concat(['netliq']);
+    for(const id of ids){ await deleteMetric(id); }
+    showToast('已清除所有數值');
+    setTimeout(()=>location.reload(), 800);
+  });
+
+})();
+</script>
+</body>
+</html>
