@@ -481,14 +481,38 @@
       calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>2)?'yellow':'green'
     },
     {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%', hasDelta:true,
-      ref:'綠 單日 <8bp ・ 黃 8–15bp ・ 紅 >15bp',
-      reason:'無風險利率基準，影響股票估值與房貸利率。',
-      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)*100>15)?'red': (d!=null && Math.abs(d)*100>8)?'yellow':'green'
+      ref:'🔴 紅燈：突破 4.5% 或單日變動 >15bp<br>🟡 黃燈：4.0%~4.5% 或單日變動 8~15bp',
+      reason:'無風險利率基準，本表設有絕對高度與單日波動的【雙重防護警報】。',
+      calc:(v,d)=> {
+        if(v==null) return 'neutral';
+        // 絕對高度判定
+        if(v > 4.5) return 'red';
+        if(v >= 4.0) return 'yellow';
+        // 波動速度 (bp) 判定
+        if(d != null) {
+          const bp = Math.abs(d) * 100;
+          if(bp > 15) return 'red';
+          if(bp > 8) return 'yellow';
+        }
+        return 'green';
+      }
     },
     {id:'us30y', name:'美債 30Y 殖利率', en:'US 30Y YIELD', unit:'%', hasDelta:true,
-      ref:'綠 單日 <8bp ・ 黃 8–15bp ・ 紅 >15bp',
-      reason:'長天期通膨預期與財政壓力的定價。',
-      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)*100>15)?'red': (d!=null && Math.abs(d)*100>8)?'yellow':'green'
+      ref:'🔴 紅燈：突破 5.0% 或單日變動 >15bp<br>🟡 黃燈：4.5%~5.0% 或單日變動 8~15bp',
+      reason:'長天期通膨預期與財政壓力的定價，本表設有【雙重防護警報】。',
+      calc:(v,d)=> {
+        if(v==null) return 'neutral';
+        // 絕對高度判定
+        if(v > 5.0) return 'red';
+        if(v >= 4.5) return 'yellow';
+        // 波動速度 (bp) 判定
+        if(d != null) {
+          const bp = Math.abs(d) * 100;
+          if(bp > 15) return 'red';
+          if(bp > 8) return 'yellow';
+        }
+        return 'green';
+      }
     },
     {id:'gold', name:'黃金價格', en:'GOLD (USD/OZ)', unit:'USD', hasDelta:true,
       ref:'黃：單日變動 >2%（避險需求升溫）',
@@ -497,7 +521,7 @@
     },
     {id:'oil', name:'原油價格 (WTI)', en:'WTI CRUDE', unit:'USD', hasDelta:true,
       ref:'綠 <3% ・ 黃 3–5% ・ 紅 >5%（單日變動）',
-      reason:'通膨與地緣政治風險的即時反應指標. ',
+      reason:'通膨與地緣政治風險的即時反應指標。',
       calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>5)?'red': (d!=null && Math.abs(d)>3)?'yellow':'green'
     },
   ];
@@ -689,30 +713,29 @@
   `;
 
   async function refreshLiq(){
-    const rec = await loadMetric('netliq');
+    const r_rec = await loadMetric('netliq');
     const badge = document.getElementById('liqBadge');
     const num = document.getElementById('liqNum');
     const deltaEl = document.getElementById('liqDelta');
     const meta = document.getElementById('liqMeta');
     const card = document.getElementById('liqCard');
-    if(rec && rec.walcl != null){
-      document.getElementById('liq-walcl').value = rec.walcl;
-      document.getElementById('liq-tga').value = rec.tga;
-      document.getElementById('liq-rrp').value = rec.rrp;
-      const net = rec.walcl - rec.tga - rec.rrp;
+    if(r_rec && r_rec.walcl != null){
+      document.getElementById('liq-walcl').value = r_rec.walcl;
+      document.getElementById('liq-tga').value = r_rec.tga;
+      document.getElementById('liq-rrp').value = r_rec.rrp;
+      const net = r_rec.walcl - r_rec.tga - r_rec.rrp;
       num.textContent = '$' + net.toLocaleString('en-US',{maximumFractionDigits:2}) + 'B';
-      meta.textContent = fmtTime(rec.date);
-      if(rec.prevNet != null){
-        const d = net - rec.prevNet;
+      meta.textContent = fmtTime(r_rec.date);
+      if(r_rec.prevNet != null){
+        const d = net - r_rec.prevNet;
         deltaEl.textContent = (d>=0?'+':'') + d.toLocaleString('en-US',{maximumFractionDigits:2}) + 'B';
         deltaEl.style.color = d < -100 ? 'var(--red)' : d < 0 ? 'var(--yellow)' : 'var(--green)';
       } else {
         deltaEl.textContent = '—';
       }
-      // status driven primarily by ON RRP buffer depletion risk
       let status = 'green';
-      if(rec.rrp < 50) status = 'red';
-      else if(rec.rrp < 200) status = 'yellow';
+      if(r_rec.rrp < 50) status = 'red';
+      else if(r_rec.rrp < 200) status = 'yellow';
       card.dataset.status = status;
       badge.className = 'status-badge ' + status;
       badge.textContent = STATUS_LABEL[status];
