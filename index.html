@@ -22,8 +22,8 @@
     --green-dim:rgba(22,101,52,0.1);
     --yellow:#854D0E;
     --yellow-dim:rgba(133,77,14,0.1);
-    --red:#991B1B;
-    --red-dim:rgba(153,27,27,0.1);
+    --red:#DC2626; /* 升級為更醒目的警示紅 */
+    --red-dim:rgba(220,38,38,0.08); /* 調淡紅燈背景，拉開字體對比 */
     --neutral:#475569;
     --neutral-dim:rgba(71,85,105,0.1);
   }
@@ -95,7 +95,12 @@
   .pill .dot{width:7px;height:7px;border-radius:50%;}
   .pill.green{background:var(--green-dim);color:var(--green);}
   .pill.yellow{background:var(--yellow-dim);color:var(--yellow);}
-  .pill.red{background:var(--red-dim);color:var(--red);}
+  .pill.red{
+    background:var(--red-dim);
+    color:var(--red);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.2); /* 讓上方總計紅燈藥丸帶有微發光 */
+    border: 1px solid rgba(220, 38, 38, 0.15);
+  }
   .pill .dot.green{background:var(--green);}
   .pill .dot.yellow{background:var(--yellow);}
   .pill .dot.red{background:var(--red);}
@@ -186,7 +191,12 @@
   }
   .card[data-status="green"]{border-left-color:var(--green);}
   .card[data-status="yellow"]{border-left-color:var(--yellow);}
-  .card[data-status="red"]{border-left-color:var(--red);}
+  
+  /* 方案二：紅燈卡片加粗紅框與外圍霓虹柔光 */
+  .card[data-status="red"] {
+    border-left: 5px solid var(--red); /* 加粗左側紅框 */
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05); /* 紅色霓虹柔光 (Glow Shadow) */
+  }
 
   .card-head{
     display:flex;
@@ -307,7 +317,13 @@
   }
   .liq-card[data-status="green"]{border-left-color:var(--green);}
   .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
-  .liq-card[data-status="red"]{border-left-color:var(--red);}
+  
+  /* 方案二：流動性卡片的紅燈霓虹光暈 */
+  .liq-card[data-status="red"]{
+    border-left: 5px solid var(--red); /* 加粗左側紅框 */
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05); /* 紅色外發光 */
+  }
+  
   .liq-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
