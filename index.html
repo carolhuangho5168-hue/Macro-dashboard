@@ -22,8 +22,8 @@
     --green-dim:rgba(22,101,52,0.1);
     --yellow:#854D0E;
     --yellow-dim:rgba(133,77,14,0.1);
-    --red:#DC2626; /* 升級為更醒目的警示紅 */
-    --red-dim:rgba(220,38,38,0.08); /* 調淡紅燈背景 */
+    --red:#DC2626;
+    --red-dim:rgba(220,38,38,0.08);
     --neutral:#475569;
     --neutral-dim:rgba(71,85,105,0.1);
   }
@@ -98,7 +98,7 @@
   .pill.red{
     background:var(--red-dim);
     color:var(--red);
-    box-shadow: 0 0 8px rgba(220, 38, 38, 0.2); /* 總計紅燈微發光 */
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.2);
     border: 1px solid rgba(220, 38, 38, 0.15);
   }
   .pill .dot.green{background:var(--green);}
@@ -192,7 +192,6 @@
   .card[data-status="green"]{border-left-color:var(--green);}
   .card[data-status="yellow"]{border-left-color:var(--yellow);}
   
-  /* 紅燈卡片加粗紅框與外圍霓虹柔光 */
   .card[data-status="red"] {
     border-left: 5px solid var(--red);
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
@@ -233,7 +232,6 @@
   .status-badge.red{background:var(--red-dim);color:var(--red);}
   .status-badge.neutral{background:var(--neutral-dim);color:var(--text-secondary);}
 
-  /* 雙輸入框並排樣式 */
   .double-input-row {
     display: flex;
     gap: 12px;
@@ -318,7 +316,6 @@
   .save-btn:hover{background:var(--accent);}
   .save-btn:active{transform:scale(0.98);}
 
-  /* 統一命名：優雅且防擠壓的雙行結果框樣式 */
   .double-row-result {
     background: var(--bg-panel-raised);
     border: 1px solid var(--border-soft);
@@ -390,7 +387,6 @@
   .liq-card[data-status="green"]{border-left-color:var(--green);}
   .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
   
-  /* 流動性與ERP卡片的紅燈霓虹光暈 */
   .liq-card[data-status="red"]{
     border-left: 5px solid var(--red);
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
@@ -507,6 +503,7 @@
   </div>
 
   <div class="tabs">
+    <!-- 確保標記當前活動的 Tab 分頁 -->
     <button class="tab-btn active" data-tab="t1">Tier 1<span class="tab-sub">每日速覽</span></button>
     <button class="tab-btn" data-tab="t2">Tier 2<span class="tab-sub">每週檢視</span></button>
     <button class="tab-btn" data-tab="t3">Tier 3<span class="tab-sub">結構性追蹤</span></button>
@@ -542,6 +539,9 @@
 <script>
 (function(){
 
+  // 全域變數，用來記憶當前使用者切換到的分頁，預設為 t1
+  let currentActiveTab = 't1';
+
   // ---------- config ----------
   const TIER1 = [
     {id:'fg', name:'F&G 指數', en:'FEAR & GREED', unit:'',
@@ -554,7 +554,6 @@
         return 'green';                         
       }
     },
-    // VIX & VXN 雙波動率指標卡片設定
     {id:'vix_vxn', name:'VIX & VXN 波動率雙指標', en:'MARKET VOLATILITY', isDouble: true,
       ref:'VIX門檻: 綠<20・黃20-30・紅>30<br>VXN門檻: 綠<25・黃25-35・紅>35',
       reason:'VIX反映大盤；VXN反映那指科技股。當VXN/VIX比率 >1.3時，代表科技股壓力顯著高於大盤，需提防台積電與0050等權值股回檔。',
@@ -680,7 +679,7 @@
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.status = 'neutral';
-    card.dataset.id = cfg.id; // 綁定 ID 用於統計函數的二次防護篩選
+    card.dataset.id = cfg.id;
     
     if (cfg.isDouble) {
       card.innerHTML = `
@@ -890,7 +889,7 @@
         ON RRP 緩衝：綠 &gt;200 ・ 黃 50–200 ・ 紅 &lt;50（緩衝耗盡，QT 將直接衝擊市場流動性）
       </div>
       <div class="reason">
-        真正影響市場的是淨流動性，而非單看 Fed 資產負負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT 期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
+        真正影響市場的是淨流動性，而非單看 Fed 資產負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT 期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
       </div>
       <div class="meta" id="liqMeta">尚未更新</div>
     </div>
@@ -960,7 +959,7 @@
       <div class="liq-grid">
         <div class="liq-field">
           <label>S&P 500 Forward PE</label>
-          <input type="number" step="any" id="erp-pe" placeholder="例如 22.5">
+          <input type="number" step="any" id="erp-pe" placeholder="example 22.5">
           <div class="grey-desc">請參考 Yardeni Research 週報或 FactSet 報告取得最新 Forward PE。如輸入 22.5</div>
         </div>
         <div class="liq-field">
@@ -1061,51 +1060,51 @@
       await window.refreshERP();
       updateSummary();
     } else {
-      showToast('儲404失敗，請稍後再試');
+      showToast('儲存失敗，請稍後再試');
     }
   });
 
   window.refreshERP();
 
-  // ---------- summary ----------
-  // 【核心修復】在此執行極度嚴格的白名單歸零檢查
+  // ---------- 【優化核心】頂部儀表板統計函數（實時分頁白名單篩選） ----------
   function updateSummary(){
     let g=0,y=0,r=0;
     
-    // 定義各個分頁指標的白名單 ID
+    // 定義目前分頁應該計算的白名單標籤 ID
     const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'us10y', 'us30y', 'gold', 'oil'];
     const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix'];
     
+    // 1. 先計算通用型卡片（Tier 1 和 Tier 2）
     allCards.forEach(({card})=>{
       const cid = card.dataset.id;
       const s = card.dataset.status;
       
-      // 二次安全關卡：若狀態為 neutral，一律強制歸零排除
+      // 分頁隔離保護：如果當前切換到 t1，背景的 t2 卡片一律不計入統計
+      if (currentActiveTab === 't1' && !tier1Ids.includes(cid)) return;
+      if (currentActiveTab === 't2' && !tier2Ids.includes(cid)) return;
+      if (currentActiveTab === 't3') return; // 如果在 t3，通用卡片全部歸零不統計
+
       if (s === 'neutral') return;
 
-      // 檢查對應 LocalStorage 中是否真的有該 ID 的有效填寫紀錄
       const rawVal = localStorage.getItem('metric:' + cid);
-      if (!rawVal) return; // 如果緩存為空（使用者未填寫），強制不計入統計
+      if (!rawVal) return; 
 
-      // 依據各自合法的狀態累加
       if (s === 'green') g++;
       else if (s === 'yellow') y++;
       else if (s === 'red') r++;
     });
     
-    // 嚴格篩選檢查 Tier 3 - Net Liquidity
-    const liqCard = document.getElementById('liqCard');
-    if(liqCard && liqCard.dataset.status !== 'neutral'){
-      if(localStorage.getItem('metric:netliq')) {
+    // 2. 獨立處理 Tier 3 流動性大卡片
+    if (currentActiveTab === 't3') {
+      const liqCard = document.getElementById('liqCard');
+      if(liqCard && liqCard.dataset.status !== 'neutral' && localStorage.getItem('metric:netliq')){
         const s = liqCard.dataset.status;
         if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
       }
-    }
-    
-    // 嚴格篩選檢查 Tier 3 - ERP
-    const erpCard = document.getElementById('erpCard');
-    if(erpCard && erpCard.dataset.status !== 'neutral'){
-      if(localStorage.getItem('metric:erp')) {
+      
+      // 獨立處理 Tier 3 ERP 大卡片
+      const erpCard = document.getElementById('erpCard');
+      if(erpCard && erpCard.dataset.status !== 'neutral' && localStorage.getItem('metric:erp')){
         const s = erpCard.dataset.status;
         if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
       }
@@ -1115,15 +1114,23 @@
     document.getElementById('cntYellow').textContent = y;
     document.getElementById('cntRed').textContent = r;
   }
+  
+  // 網頁初始載入時，先觸發一次統計
   setTimeout(updateSummary, 400);
 
-  // ---------- tabs ----------
+  // ---------- tabs（新增分頁點擊與燈號的即時綁定連動） ----------
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      
       btn.classList.add('active');
-      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+      const targetTab = btn.dataset.tab;
+      document.getElementById('panel-' + targetTab).classList.add('active');
+      
+      // 【關鍵修復點】更新當前活動分頁狀態變數，並強制觸發總計歸零/更新運算
+      currentActiveTab = targetTab;
+      updateSummary();
     });
   });
 
