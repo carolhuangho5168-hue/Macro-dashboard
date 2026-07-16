@@ -318,26 +318,33 @@
   .save-btn:hover{background:var(--accent);}
   .save-btn:active{transform:scale(0.98);}
 
-  /* VIX / VXN 比率專屬排版 */
-  .ratio-display {
+  /* 統一命名：優雅且防擠壓的雙行結果框樣式 */
+  .double-row-result {
     background: var(--bg-panel-raised);
     border: 1px solid var(--border-soft);
-    border-radius: 6px;
-    padding: 6px 10px;
+    border-radius: 8px;
+    padding: 12px 14px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
+    display: block;
+    line-height: 2;
+  }
+  .double-row-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
-  .ratio-val {
-    font-weight: bold;
-    color: var(--text-primary);
+  .double-row-divider {
+    border-bottom: 1px dashed var(--border-soft);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
   }
-  .ratio-warn {
-    color: var(--accent-dim);
-    font-weight: bold;
+  .result-num-bold {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
   }
 
   .threshold-ref{
@@ -698,10 +705,19 @@
           </div>
           <button class="save-btn" data-role="save" style="align-self: flex-end; height: 30px;">更新</button>
         </div>
-        <div class="ratio-display">
-          <span>VXN / VIX 比率</span>
-          <span id="ratio-output">—</span>
+        
+        <!-- 採用與 ERP 結果框 100% 相同結構樣式，完美防擠壓、支援自適應 -->
+        <div class="double-row-result">
+          <div class="double-row-item double-row-divider">
+            <span class="lbl">VXN / VIX 比率</span>
+            <span id="ratio-output-val" class="result-num-bold">—</span>
+          </div>
+          <div class="double-row-item">
+            <span class="lbl">避險溢價狀態</span>
+            <span id="ratio-output-warn" style="font-weight: bold;">—</span>
+          </div>
         </div>
+        
         <div class="threshold-ref">${cfg.ref}</div>
         <div class="reason">${cfg.reason}</div>
         <div class="meta" data-role="meta">尚未更新</div>
@@ -739,7 +755,8 @@
       if (cfg.isDouble) {
         const vixIn = card.querySelector('[data-role="vix-input"]');
         const vxnIn = card.querySelector('[data-role="vxn-input"]');
-        const ratioOut = card.querySelector('#ratio-output');
+        const ratioValOut = card.querySelector('#ratio-output-val');
+        const ratioWarnOut = card.querySelector('#ratio-output-warn');
         
         if (rec) {
           vixIn.value = rec.vix != null ? rec.vix : '';
@@ -749,9 +766,19 @@
           if (rec.vix && rec.vxn) {
             const ratio = (rec.vxn / rec.vix).toFixed(2);
             const isWarn = ratio > 1.3;
-            ratioOut.innerHTML = `<span class="ratio-val">${ratio}</span> ${isWarn ? '<span class="ratio-warn">⚠️ 科技股避險溢價偏高！</span>' : ''}`;
+            
+            // 完美分行：數值留在第一排，警告標語優雅降落第二排
+            ratioValOut.textContent = ratio;
+            
+            // 【優化連動】綠燈與黃燈字體顏色完美連動
+            if (isWarn) {
+              ratioWarnOut.innerHTML = `<span style="color: var(--accent-dim);">⚠️ 科技股避險溢價偏高！</span>`;
+            } else {
+              ratioWarnOut.innerHTML = `<span style="color: var(--green);">🟢 科技股溢價正常</span>`;
+            }
           } else {
-            ratioOut.textContent = '—';
+            ratioValOut.textContent = '—';
+            ratioWarnOut.textContent = '—';
           }
           applyStatus(cfg.calc(rec.vix, rec.vxn));
         }
@@ -944,15 +971,15 @@
       </div>
       <button class="save-btn" id="erpSave" style="padding:10px 20px;">更新並計算</button>
       
-      <!-- 全新雙排上下分行結果框排版 -->
-      <div class="liq-result" style="display: block; line-height: 2;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-soft); padding-bottom: 8px; margin-bottom: 8px;">
+      <!-- 套用統一的命名與樣式結構 -->
+      <div class="double-row-result">
+        <div class="double-row-item double-row-divider">
           <span class="lbl">S&P 500 FORWARD 盈餘殖利率 (1/PE)</span>
-          <span class="num" id="erpYieldNum" style="font-size: 18px;">—</span>
+          <span class="result-num-bold" id="erpYieldNum">—</span>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="double-row-item">
           <span class="lbl">實質 ERP (盈餘殖利率 − 美債10Y)</span>
-          <span class="num" id="erpValNum" style="font-size: 20px;">—</span>
+          <span class="result-num-bold" id="erpValNum">—</span>
         </div>
       </div>
 
@@ -1016,11 +1043,18 @@
         badge.textContent = STATUS_LABEL[status];
       } else {
         yieldNum.textContent = ((1 / erpRec.pe) * 100).toFixed(2) + '%';
-        erpValNum.textContent = '等候美債數據';
+        // 美債未填時的防呆提示
+        erpValNum.innerHTML = `<span style="font-size: 13px; color: var(--yellow); font-weight: bold;">⚠️ 等候 Tier 1 美債數據</span>`;
         card.dataset.status = 'neutral';
         badge.className = 'status-badge neutral';
         badge.textContent = '等候美債';
       }
+    } else {
+      yieldNum.textContent = '—';
+      erpValNum.textContent = '—';
+      card.dataset.status = 'neutral';
+      badge.className = 'status-badge neutral';
+      badge.textContent = '尚無資料';
     }
   }
 
