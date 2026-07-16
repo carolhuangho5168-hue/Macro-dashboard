@@ -23,7 +23,7 @@
     --yellow:#854D0E;
     --yellow-dim:rgba(133,77,14,0.1);
     --red:#DC2626; /* 升級為更醒目的警示紅 */
-    --red-dim:rgba(220,38,38,0.08); /* 調淡紅燈背景，拉開字體對比 */
+    --red-dim:rgba(220,38,38,0.08); /* 調淡紅燈背景 */
     --neutral:#475569;
     --neutral-dim:rgba(71,85,105,0.1);
   }
@@ -98,7 +98,7 @@
   .pill.red{
     background:var(--red-dim);
     color:var(--red);
-    box-shadow: 0 0 8px rgba(220, 38, 38, 0.2); /* 讓上方總計紅燈藥丸帶有微發光 */
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.2); /* 總計紅燈微發光 */
     border: 1px solid rgba(220, 38, 38, 0.15);
   }
   .pill .dot.green{background:var(--green);}
@@ -192,7 +192,7 @@
   .card[data-status="green"]{border-left-color:var(--green);}
   .card[data-status="yellow"]{border-left-color:var(--yellow);}
   
-  /* 方案二：紅燈卡片加粗紅框與外圍霓虹柔光 */
+  /* 紅燈卡片加粗紅框與外圍霓虹柔光 */
   .card[data-status="red"] {
     border-left: 5px solid var(--red); /* 加粗左側紅框 */
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05); /* 紅色霓虹柔光 (Glow Shadow) */
@@ -232,6 +232,48 @@
   .status-badge.yellow{background:var(--yellow-dim);color:var(--yellow);}
   .status-badge.red{background:var(--red-dim);color:var(--red);}
   .status-badge.neutral{background:var(--neutral-dim);color:var(--text-secondary);}
+
+  /* 雙輸入框並排樣式 */
+  .double-input-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .input-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .input-col label {
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--text-tertiary);
+  }
+  .input-field-wrapper {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .input-field-wrapper input {
+    width: 100%;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family:'JetBrains Mono',monospace;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .input-field-wrapper input:focus{border-color:var(--accent-dim);background:#FFFFFF;}
+  .input-field-wrapper .unit {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--text-tertiary);
+    font-weight:600;
+  }
 
   .input-row{
     display:flex;
@@ -276,6 +318,28 @@
   .save-btn:hover{background:var(--accent);}
   .save-btn:active{transform:scale(0.98);}
 
+  /* VIX / VXN 比率專屬排版 */
+  .ratio-display {
+    background: var(--bg-panel-raised);
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ratio-val {
+    font-weight: bold;
+    color: var(--text-primary);
+  }
+  .ratio-warn {
+    color: var(--accent-dim);
+    font-weight: bold;
+  }
+
   .threshold-ref{
     font-family:'JetBrains Mono',monospace;
     font-size:10.5px;
@@ -318,10 +382,10 @@
   .liq-card[data-status="green"]{border-left-color:var(--green);}
   .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
   
-  /* 方案二：流動性卡片的紅燈霓虹光暈 */
+  /* 流動性卡片的紅燈霓虹光暈 */
   .liq-card[data-status="red"]{
-    border-left: 5px solid var(--red); /* 加粗左側紅框 */
-    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05); /* 紅色外發光 */
+    border-left: 5px solid var(--red);
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
   }
   
   .liq-grid{
@@ -481,10 +545,18 @@
         return 'green';                         
       }
     },
-    {id:'vix', name:'VIX', en:'VOLATILITY INDEX', unit:'pts',
-      ref:'綠 <20 ・ 黃 20–30 ・ 紅 >30',
-      reason:'選擇權隱含波動率，反映短期市場恐慌程度。',
-      calc:(v)=> v==null?'neutral': v>30?'red': v>=20?'yellow':'green'
+    // VIX & VXN 雙波動率指標卡片設定
+    {id:'vix_vxn', name:'VIX & VXN 波動率雙指標', en:'MARKET VOLATILITY', isDouble: true,
+      ref:'VIX門檻: 綠<20・黃20-30・紅>30<br>VXN門檻: 綠<25・黃25-35・紅>35',
+      reason:'VIX反映大盤；VXN反映那指科技股。當VXN/VIX比率 >1.3時，代表科技股壓力顯著高於大盤，需提防台積電與0050等權值股回檔。',
+      calc:(vix, vxn) => {
+        if(vix == null && vxn == null) return 'neutral';
+        const vixStatus = vix == null ? 'green' : (vix > 30 ? 'red' : (vix >= 20 ? 'yellow' : 'green'));
+        const vxnStatus = vxn == null ? 'green' : (vxn > 35 ? 'red' : (vxn >= 25 ? 'yellow' : 'green'));
+        if (vixStatus === 'red' || vxnStatus === 'red') return 'red';
+        if (vixStatus === 'yellow' || vxnStatus === 'yellow') return 'yellow';
+        return 'green';
+      }
     },
     {id:'dxy', name:'DXY 美元指數', en:'DOLLAR INDEX', unit:'pts',
       ref:'🟡 黃燈：突破 101 或單日變動 >2%（防護警報）',
@@ -599,22 +671,56 @@
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.status = 'neutral';
-    card.innerHTML = `
-      <div class="card-head">
-        <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
-        <span class="status-badge neutral" data-role="badge">尚無資料</span>
-      </div>
-      <div class="input-row">
-        <input type="number" step="any" placeholder="輸入最新數值" data-role="input">
-        <span class="unit">${cfg.unit}</span>
-        <button class="save-btn" data-role="save">更新</button>
-      </div>
-      <div class="threshold-ref">${cfg.ref}</div>
-      <div class="reason">${cfg.reason}</div>
-      <div class="meta" data-role="meta">尚未更新</div>
-    `;
+    
+    // 依據是否為雙輸入卡片渲染不同的內部 HTML
+    if (cfg.isDouble) {
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
+          <span class="status-badge neutral" data-role="badge">尚無資料</span>
+        </div>
+        <div class="double-input-row">
+          <div class="input-col">
+            <label>VIX (大盤)</label>
+            <div class="input-field-wrapper">
+              <input type="number" step="any" placeholder="大盤" data-role="vix-input">
+              <span class="unit">pts</span>
+            </div>
+          </div>
+          <div class="input-col">
+            <label>VXN (科技)</label>
+            <div class="input-field-wrapper">
+              <input type="number" step="any" placeholder="科技" data-role="vxn-input">
+              <span class="unit">pts</span>
+            </div>
+          </div>
+          <button class="save-btn" data-role="save" style="align-self: flex-end; height: 30px;">更新</button>
+        </div>
+        <div class="ratio-display">
+          <span>VXN / VIX 比率</span>
+          <span id="ratio-output">—</span>
+        </div>
+        <div class="threshold-ref">${cfg.ref}</div>
+        <div class="reason">${cfg.reason}</div>
+        <div class="meta" data-role="meta">尚未更新</div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
+          <span class="status-badge neutral" data-role="badge">尚無資料</span>
+        </div>
+        <div class="input-row">
+          <input type="number" step="any" placeholder="輸入最新數值" data-role="input">
+          <span class="unit">${cfg.unit}</span>
+          <button class="save-btn" data-role="save">更新</button>
+        </div>
+        <div class="threshold-ref">${cfg.ref}</div>
+        <div class="reason">${cfg.reason}</div>
+        <div class="meta" data-role="meta">尚未更新</div>
+      `;
+    }
 
-    const input = card.querySelector('[data-role="input"]');
     const badge = card.querySelector('[data-role="badge"]');
     const meta = card.querySelector('[data-role="meta"]');
     const saveBtn = card.querySelector('[data-role="save"]');
@@ -627,31 +733,73 @@
 
     async function refresh(){
       const rec = await loadMetric(cfg.id);
-      if(rec && rec.value != null){
-        input.value = rec.value;
-        meta.textContent = fmtTime(rec.date);
-        let d = null;
-        if(rec.prev != null){
-          d = rec.value - rec.prev;
+      
+      if (cfg.isDouble) {
+        const vixIn = card.querySelector('[data-role="vix-input"]');
+        const vxnIn = card.querySelector('[data-role="vxn-input"]');
+        const ratioOut = card.querySelector('#ratio-output');
+        
+        if (rec) {
+          vixIn.value = rec.vix != null ? rec.vix : '';
+          vxnIn.value = rec.vxn != null ? rec.vxn : '';
+          meta.textContent = fmtTime(rec.date);
+          
+          if (rec.vix && rec.vxn) {
+            const ratio = (rec.vxn / rec.vix).toFixed(2);
+            const isWarn = ratio > 1.3;
+            ratioOut.innerHTML = `<span class="ratio-val">${ratio}</span> ${isWarn ? '<span class="ratio-warn">⚠️ 科技股避險溢價偏高！</span>' : ''}`;
+          } else {
+            ratioOut.textContent = '—';
+          }
+          applyStatus(cfg.calc(rec.vix, rec.vxn));
         }
-        const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prev||1)*100) : null) : d);
-        applyStatus(status);
+      } else {
+        const input = card.querySelector('[data-role="input"]');
+        if(rec && rec.value != null){
+          input.value = rec.value;
+          meta.textContent = fmtTime(rec.date);
+          let d = null;
+          if(rec.prev != null){
+            d = rec.value - rec.prev;
+          }
+          const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prev||1)*100) : null) : d);
+          applyStatus(status);
+        }
       }
     }
 
     saveBtn.addEventListener('click', async ()=>{
-      const val = parseFloat(input.value);
-      if(isNaN(val)){ showToast('請輸入有效數值'); return; }
-      const prevRec = await loadMetric(cfg.id);
-      const prevVal = prevRec ? prevRec.value : null;
-      const newRec = {value: val, prev: prevVal, date: new Date().toISOString()};
-      const ok = await saveMetric(cfg.id, newRec);
-      if(ok){
-        showToast(cfg.name + ' 已更新');
-        await refresh();
-        updateSummary();
+      if (cfg.isDouble) {
+        const vixIn = card.querySelector('[data-role="vix-input"]');
+        const vxnIn = card.querySelector('[data-role="vxn-input"]');
+        const vixVal = parseFloat(vixIn.value);
+        const vxnVal = parseFloat(vxnIn.value);
+        
+        if (isNaN(vixVal) || isNaN(vxnVal)) { showToast('請完整填寫 VIX 與 VXN 數值'); return; }
+        
+        const ok = await saveMetric(cfg.id, {vix: vixVal, vxn: vxnVal, date: new Date().toISOString()});
+        if (ok) {
+          showToast('波動率數據已更新');
+          await refresh();
+          updateSummary();
+        } else {
+          showToast('儲存失敗，請稍後再試');
+        }
       } else {
-        showToast('儲存失敗，請稍後再試');
+        const input = card.querySelector('[data-role="input"]');
+        const val = parseFloat(input.value);
+        if(isNaN(val)){ showToast('請輸入有效數值'); return; }
+        const prevRec = await loadMetric(cfg.id);
+        const prevVal = prevRec ? prevRec.value : null;
+        const newRec = {value: val, prev: prevVal, date: new Date().toISOString()};
+        const ok = await saveMetric(cfg.id, newRec);
+        if(ok){
+          showToast(cfg.name + ' 已更新');
+          await refresh();
+          updateSummary();
+        } else {
+          showToast('儲存失敗，請稍後再試');
+        }
       }
     });
 
