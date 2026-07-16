@@ -194,8 +194,8 @@
   
   /* 紅燈卡片加粗紅框與外圍霓虹柔光 */
   .card[data-status="red"] {
-    border-left: 5px solid var(--red); /* 加粗左側紅框 */
-    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05); /* 紅色霓虹柔光 (Glow Shadow) */
+    border-left: 5px solid var(--red);
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
   }
 
   .card-head{
@@ -370,7 +370,7 @@
     margin-top:8px;
   }
 
-  /* net liquidity special card */
+  /* net liquidity & ERP special card */
   .liq-card{
     background:var(--bg-panel);
     border:1px solid var(--border);
@@ -378,11 +378,12 @@
     padding:20px;
     border-left:4px solid var(--neutral);
     box-shadow:0 1px 3px rgba(0,0,0,0.02);
+    margin-bottom: 20px;
   }
   .liq-card[data-status="green"]{border-left-color:var(--green);}
   .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
   
-  /* 流動性卡片的紅燈霓虹光暈 */
+  /* 流動性與ERP卡片的紅燈霓虹光暈 */
   .liq-card[data-status="red"]{
     border-left: 5px solid var(--red);
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
@@ -520,6 +521,7 @@
   <div class="tab-panel" id="panel-t3">
     <p class="tab-intro">Fed 資料本身每週更新（WALCL 每週三、TGA 每日更新），此分頁重點在辨識結構性轉折，而非每日訊號。</p>
     <div id="liqContainer"></div>
+    <div id="erpContainer"></div>
   </div>
 
   <div class="reset-line">
@@ -797,6 +799,10 @@
           showToast(cfg.name + ' 已更新');
           await refresh();
           updateSummary();
+          // 關鍵連動：若更新了 Tier 1 的美債 10Y，自動觸發 Tier 3 ERP 卡片的重新計算
+          if (cfg.id === 'us10y' && typeof window.refreshERP === 'function') {
+            window.refreshERP();
+          }
         } else {
           showToast('儲存失敗，請稍後再試');
         }
@@ -916,6 +922,124 @@
 
   refreshLiq();
 
+  // ---------- Equity Risk Premium (Tier 3) ----------
+  const erpContainer = document.getElementById('erpContainer');
+  erpContainer.innerHTML = `
+    <div class="liq-card" id="erpCard">
+      <div class="card-head">
+        <div class="card-name">Equity Risk Premium (ERP)<span class="en">S&P 500 Forward 盈餘殖利率 − 美債 10Y 殖利率</span></div>
+        <span class="status-badge neutral" id="erpBadge">尚無資料</span>
+      </div>
+      <div class="liq-grid">
+        <div class="liq-field">
+          <label>S&P 500 Forward PE</label>
+          <input type="number" step="any" id="erp-pe" placeholder="例如 22.5">
+          <div class="grey-desc">請參考 Yardeni Research 週報或 FactSet 報告取得最新 Forward PE。如輸入 22.5</div>
+        </div>
+        <div class="liq-field">
+          <label>美債 10Y 殖利率 (%) <span style="color: var(--accent-dim);">[自動連動]</span></label>
+          <input type="number" step="any" id="erp-bond" disabled placeholder="需先至 Tier 1 更新數據">
+          <div class="grey-desc">本欄位會自動讀取您在 Tier 1 輸入的美債 10Y 最新數據，無需重複輸入。</div>
+        </div>
+      </div>
+      <button class="save-btn" id="erpSave" style="padding:10px 20px;">更新並計算</button>
+      
+      <!-- 全新雙排上下分行結果框排版 -->
+      <div class="liq-result" style="display: block; line-height: 2;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-soft); padding-bottom: 8px; margin-bottom: 8px;">
+          <span class="lbl">S&P 500 FORWARD 盈餘殖利率 (1/PE)</span>
+          <span class="num" id="erpYieldNum" style="font-size: 18px;">—</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="lbl">實質 ERP (盈餘殖利率 − 美債10Y)</span>
+          <span class="num" id="erpValNum" style="font-size: 20px;">—</span>
+        </div>
+      </div>
+
+      <div class="threshold-ref">
+        ERP 門檻： 綠 &gt; +1.0% (正常) ・ 黃 0.0% ~ +1.0% (補償偏薄) ・ 紅 &lt; 0.0% (股債回報倒掛)
+      </div>
+      <div class="reason">
+        股權風險溢酬 (ERP) 是評估「買股票」相對於「買無風險美債」性價比的終極指標。當 ERP 進入黃、紅燈區，代表高利率下股票的風險補償極薄，甚至出現倒掛，此時應提防股市估值修正，並適度將資金再平衡配置至債券等避險資產。
+      </div>
+      <div class="meta" id="erpMeta">尚未更新</div>
+    </div>
+  `;
+
+  // 將 refreshERP 函數掛載到全域 Window，供 Tier 1 美債更新後調用
+  window.refreshERP = async function() {
+    const erpRec = await loadMetric('erp');
+    const bondRec = await loadMetric('us10y'); // 自 Tier 1 美債中撈取數據
+    
+    const peIn = document.getElementById('erp-pe');
+    const bondIn = document.getElementById('erp-bond');
+    
+    const badge = document.getElementById('erpBadge');
+    const yieldNum = document.getElementById('erpYieldNum');
+    const erpValNum = document.getElementById('erpValNum');
+    const meta = document.getElementById('erpMeta');
+    const card = document.getElementById('erpCard');
+
+    // 1. 同步美債 10Y 數據
+    if (bondRec && bondRec.value != null) {
+      bondIn.value = bondRec.value;
+      bondIn.placeholder = "";
+    } else {
+      bondIn.value = "";
+      bondIn.placeholder = "請先至 Tier 1 更新數據";
+    }
+
+    // 2. 載入並執行 ERP 計算
+    if (erpRec && erpRec.pe != null) {
+      peIn.value = erpRec.pe;
+      meta.textContent = fmtTime(erpRec.date);
+      
+      const bondVal = bondRec ? bondRec.value : null;
+      if (bondVal != null) {
+        const earningYield = (1 / erpRec.pe) * 100; // 換算為百分比
+        const erpVal = earningYield - bondVal;      // 盈餘殖利率 - 美債 10Y
+        
+        yieldNum.textContent = earningYield.toFixed(2) + '%';
+        
+        // 自動判定並顯示「實質 ERP 數值」與 🚨 警示語
+        const isWarn = erpVal < 0;
+        erpValNum.innerHTML = (erpVal >= 0 ? '+' : '') + erpVal.toFixed(2) + '%' + 
+                              (isWarn ? ' <span style="font-size: 13px; color: var(--red); font-weight: bold; margin-left: 8px;">🚨 股債回報倒掛！</span>' : '');
+        
+        // 燈號判定
+        let status = 'green';
+        if (erpVal < 0.0) status = 'red';
+        else if (erpVal <= 1.0) status = 'yellow';
+        
+        card.dataset.status = status;
+        badge.className = 'status-badge ' + status;
+        badge.textContent = STATUS_LABEL[status];
+      } else {
+        yieldNum.textContent = ((1 / erpRec.pe) * 100).toFixed(2) + '%';
+        erpValNum.textContent = '等候美債數據';
+        card.dataset.status = 'neutral';
+        badge.className = 'status-badge neutral';
+        badge.textContent = '等候美債';
+      }
+    }
+  }
+
+  document.getElementById('erpSave').addEventListener('click', async ()=>{
+    const pe = parseFloat(document.getElementById('erp-pe').value);
+    if (isNaN(pe) || pe <= 0) { showToast('請輸入有效的 Forward PE 數值'); return; }
+    
+    const ok = await saveMetric('erp', {pe, date: new Date().toISOString()});
+    if (ok) {
+      showToast('ERP 數據已更新並計算');
+      await window.refreshERP();
+      updateSummary();
+    } else {
+      showToast('儲存失敗，請稍後再試');
+    }
+  });
+
+  window.refreshERP();
+
   // ---------- summary ----------
   function updateSummary(){
     let g=0,y=0,r=0;
@@ -923,11 +1047,21 @@
       const s = card.dataset.status;
       if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
     });
+    
+    // 計入 Net Liquidity 燈號
     const liqCard = document.getElementById('liqCard');
     if(liqCard){
       const s = liqCard.dataset.status;
       if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
     }
+    
+    // 計入 ERP 燈號
+    const erpCard = document.getElementById('erpCard');
+    if(erpCard){
+      const s = erpCard.dataset.status;
+      if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
+    }
+    
     document.getElementById('cntGreen').textContent = g;
     document.getElementById('cntYellow').textContent = y;
     document.getElementById('cntRed').textContent = r;
@@ -947,7 +1081,7 @@
   // ---------- reset ----------
   document.getElementById('resetBtn').addEventListener('click', async ()=>{
     if(!confirm('確定要清除所有已儲存的數值嗎？此動作無法復原。')) return;
-    const ids = [...TIER1, ...TIER2].map(c=>c.id).concat(['netliq']);
+    const ids = [...TIER1, ...TIER2].map(c=>c.id).concat(['netliq', 'erp']);
     for(const id of ids){ await deleteMetric(id); }
     showToast('已清除所有數值');
     setTimeout(()=>location.reload(), 800);
