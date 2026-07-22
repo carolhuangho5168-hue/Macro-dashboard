@@ -344,6 +344,22 @@
     color: var(--text-primary);
   }
 
+  .delta-info{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--text-secondary);
+    background:var(--bg-panel-raised);
+    border:1px solid var(--border-soft);
+    border-radius:6px;
+    padding:6px 10px;
+    margin-bottom:10px;
+    line-height:1.5;
+  }
+  .delta-info .arrow-up{color:var(--red);font-weight:700;}
+  .delta-info .arrow-down{color:var(--green);font-weight:700;}
+  .delta-info .arrow-flat{color:var(--text-tertiary);font-weight:700;}
+  .delta-info .empty{color:var(--text-tertiary);}
+
   .threshold-ref{
     font-family:'JetBrains Mono',monospace;
     font-size:10.5px;
@@ -503,7 +519,6 @@
   </div>
 
   <div class="tabs">
-    <!-- 確保標記當前活動的 Tab 分頁 -->
     <button class="tab-btn active" data-tab="t1">Tier 1<span class="tab-sub">每日速覽</span></button>
     <button class="tab-btn" data-tab="t2">Tier 2<span class="tab-sub">每週檢視</span></button>
     <button class="tab-btn" data-tab="t3">Tier 3<span class="tab-sub">結構性追蹤</span></button>
@@ -539,7 +554,6 @@
 <script>
 (function(){
 
-  // 全域變數，用來記憶當前使用者切換到的分頁，預設為 t1
   let currentActiveTab = 't1';
 
   // ---------- config ----------
@@ -660,6 +674,47 @@
     try{ localStorage.removeItem('metric:'+id); }catch(e){}
   }
 
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  function buildDayLockedRecord(oldRec, newFields){
+    const today = todayStr();
+    const rec = Object.assign({}, newFields, {day: today, date: new Date().toISOString()});
+    if(oldRec && oldRec.day === today){
+      Object.keys(oldRec).forEach(k=>{
+        if(k.indexOf('prev') === 0) rec[k] = oldRec[k];
+      });
+      rec.prevDay = oldRec.prevDay || null;
+    } else if(oldRec){
+      Object.keys(newFields).forEach(k=>{
+        rec['prev'+cap(k)] = (oldRec[k] != null) ? oldRec[k] : null;
+      });
+      rec.prevDay = oldRec.day || null;
+    } else {
+      Object.keys(newFields).forEach(k=>{
+        rec['prev'+cap(k)] = null;
+      });
+      rec.prevDay = null;
+    }
+    return rec;
+  }
+
+  function fmtDeltaLine(prevVal, curVal, unit, prevDay){
+    unit = unit || '';
+    if(prevVal == null || curVal == null){
+      return '<span class="empty">尚無前一交易日資料（今日為首次記錄）</span>';
+    }
+    const diff = curVal - prevVal;
+    const arrowClass = diff > 0 ? 'arrow-up' : (diff < 0 ? 'arrow-down' : 'arrow-flat');
+    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '—');
+    const diffStr = (diff >= 0 ? '+' : '') + diff.toFixed(diff !== 0 && Math.abs(diff) < 1 ? 3 : 2);
+    return `前一交易日 (${prevDay||'—'}): ${prevVal}${unit} → 今日: ${curVal}${unit} `
+         + `<span class="${arrowClass}">${arrow} ${diffStr}${unit}</span>`;
+  }
+
   function showToast(msg){
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -715,7 +770,10 @@
             <span id="ratio-output-warn" style="font-weight: bold;">—</span>
           </div>
         </div>
-        
+
+        <div class="delta-info" data-role="delta-vix"></div>
+        <div class="delta-info" data-role="delta-vxn"></div>
+
         <div class="threshold-ref">${cfg.ref}</div>
         <div class="reason">${cfg.reason}</div>
         <div class="meta" data-role="meta">尚未更新</div>
@@ -731,6 +789,7 @@
           <span class="unit">${cfg.unit}</span>
           <button class="save-btn" data-role="save">更新</button>
         </div>
+        <div class="delta-info" data-role="delta"></div>
         <div class="threshold-ref">${cfg.ref}</div>
         <div class="reason">${cfg.reason}</div>
         <div class="meta" data-role="meta">尚未更新</div>
@@ -755,6 +814,8 @@
         const vxnIn = card.querySelector('[data-role="vxn-input"]');
         const ratioValOut = card.querySelector('#ratio-output-val');
         const ratioWarnOut = card.querySelector('#ratio-output-warn');
+        const deltaVixEl = card.querySelector('[data-role="delta-vix"]');
+        const deltaVxnEl = card.querySelector('[data-role="delta-vxn"]');
         
         if (rec && rec.vix != null && rec.vxn != null) {
           vixIn.value = rec.vix;
@@ -770,24 +831,31 @@
           } else {
             ratioWarnOut.innerHTML = `<span style="color: var(--green);">🟢 科技股溢價正常</span>`;
           }
+          if(deltaVixEl) deltaVixEl.innerHTML = 'VIX ' + fmtDeltaLine(rec.prevVix, rec.vix, '', rec.prevDay);
+          if(deltaVxnEl) deltaVxnEl.innerHTML = 'VXN ' + fmtDeltaLine(rec.prevVxn, rec.vxn, '', rec.prevDay);
           applyStatus(cfg.calc(rec.vix, rec.vxn));
         } else {
           ratioValOut.textContent = '—';
           ratioWarnOut.textContent = '—';
+          if(deltaVixEl) deltaVixEl.innerHTML = '<span class="empty">尚無資料</span>';
+          if(deltaVxnEl) deltaVxnEl.innerHTML = '<span class="empty">尚無資料</span>';
           applyStatus('neutral');
         }
       } else {
         const input = card.querySelector('[data-role="input"]');
+        const deltaEl = card.querySelector('[data-role="delta"]');
         if(rec && rec.value != null){
           input.value = rec.value;
           meta.textContent = fmtTime(rec.date);
           let d = null;
-          if(rec.prev != null){
-            d = rec.value - rec.prev;
+          if(rec.prevValue != null){
+            d = rec.value - rec.prevValue;
           }
-          const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prev||1)*100) : null) : d);
+          if(deltaEl) deltaEl.innerHTML = fmtDeltaLine(rec.prevValue, rec.value, cfg.unit === 'USD' ? '' : cfg.unit, rec.prevDay);
+          const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prevValue||1)*100) : null) : d);
           applyStatus(status);
         } else {
+          if(deltaEl) deltaEl.innerHTML = '<span class="empty">尚無資料</span>';
           applyStatus('neutral');
         }
       }
@@ -802,7 +870,9 @@
         
         if (isNaN(vixVal) || isNaN(vxnVal)) { showToast('請完整填寫 VIX 與 VXN 數值'); return; }
         
-        const ok = await saveMetric(cfg.id, {vix: vixVal, vxn: vxnVal, date: new Date().toISOString()});
+        const oldRec = await loadMetric(cfg.id);
+        const newRec = buildDayLockedRecord(oldRec, {vix: vixVal, vxn: vxnVal});
+        const ok = await saveMetric(cfg.id, newRec);
         if (ok) {
           showToast('波動率數據已更新');
           await refresh();
@@ -814,9 +884,8 @@
         const input = card.querySelector('[data-role="input"]');
         const val = parseFloat(input.value);
         if(isNaN(val)){ showToast('請輸入有效數值'); return; }
-        const prevRec = await loadMetric(cfg.id);
-        const prevVal = prevRec ? prevRec.value : null;
-        const newRec = {value: val, prev: prevVal, date: new Date().toISOString()};
+        const oldRec = await loadMetric(cfg.id);
+        const newRec = buildDayLockedRecord(oldRec, {value: val});
         const ok = await saveMetric(cfg.id, newRec);
         if(ok){
           showToast(cfg.name + ' 已更新');
@@ -1060,29 +1129,27 @@
       await window.refreshERP();
       updateSummary();
     } else {
+      // 修正：已修正為正確中文提示
       showToast('儲存失敗，請稍後再試');
     }
   });
 
   window.refreshERP();
 
-  // ---------- 【優化核心】頂部儀表板統計函數（實時分頁白名單篩選） ----------
+  // ---------- 頂部儀表板統計函數 ----------
   function updateSummary(){
     let g=0,y=0,r=0;
     
-    // 定義目前分頁應該計算的白名單標籤 ID
     const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'us10y', 'us30y', 'gold', 'oil'];
     const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix'];
     
-    // 1. 先計算通用型卡片（Tier 1 和 Tier 2）
     allCards.forEach(({card})=>{
       const cid = card.dataset.id;
       const s = card.dataset.status;
       
-      // 分頁隔離保護：如果當前切換到 t1，背景的 t2 卡片一律不計入統計
       if (currentActiveTab === 't1' && !tier1Ids.includes(cid)) return;
       if (currentActiveTab === 't2' && !tier2Ids.includes(cid)) return;
-      if (currentActiveTab === 't3') return; // 如果在 t3，通用卡片全部歸零不統計
+      if (currentActiveTab === 't3') return;
 
       if (s === 'neutral') return;
 
@@ -1094,7 +1161,6 @@
       else if (s === 'red') r++;
     });
     
-    // 2. 獨立處理 Tier 3 流動性大卡片
     if (currentActiveTab === 't3') {
       const liqCard = document.getElementById('liqCard');
       if(liqCard && liqCard.dataset.status !== 'neutral' && localStorage.getItem('metric:netliq')){
@@ -1102,7 +1168,6 @@
         if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
       }
       
-      // 獨立處理 Tier 3 ERP 大卡片
       const erpCard = document.getElementById('erpCard');
       if(erpCard && erpCard.dataset.status !== 'neutral' && localStorage.getItem('metric:erp')){
         const s = erpCard.dataset.status;
@@ -1115,10 +1180,9 @@
     document.getElementById('cntRed').textContent = r;
   }
   
-  // 網頁初始載入時，先觸發一次統計
   setTimeout(updateSummary, 400);
 
-  // ---------- tabs（新增分頁點擊與燈號的即時綁定連動） ----------
+  // ---------- tabs ----------
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1128,7 +1192,6 @@
       const targetTab = btn.dataset.tab;
       document.getElementById('panel-' + targetTab).classList.add('active');
       
-      // 【關鍵修復點】更新當前活動分頁狀態變數，並強制觸發總計歸零/更新運算
       currentActiveTab = targetTab;
       updateSummary();
     });
