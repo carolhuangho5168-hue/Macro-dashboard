@@ -699,10 +699,9 @@
       reason:'VIX 的波動率，反映尾端風險（黑天鵝事件）的定價。',
       calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
     },
-    // 【更新】SKEW 改為「近一年滾動百分位（1Y Percentile）」判讀
     {id:'skew', name:'SKEW 指數 (1Y Percentile)', en:'CBOE SKEW INDEX', unit:'%',
       ref:'🟢 綠燈：< 60% (常態)<br>🟡 黃燈：60% ~ 85% (避險偏高)<br>🔴 紅燈：> 85% (極端尾端風險)',
-      reason:'請至 thetrading.tools/skew-index 輸入「1Y Percentile（近一年百分位）」。排除長期中樞上移干擾，百分位 >85% 代表法人尾端避險需求顯著衝高。<br><span style="color:var(--text-tertiary);">（若查原始點位備用參考：綠 <140、黃 140~155、紅 >155）</span>',
+      reason:'深度價外選擇權的偏斜定價,反映法人為「黑天鵝」尾端崩盤買保護的貴不貴。',
       calc:(v)=> v==null?'neutral': v>85?'red': v>=60?'yellow':'green'
     },
   ];
