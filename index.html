@@ -37,7 +37,6 @@
   }
   .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
 
-  /* header */
   .eyebrow{
     font-family:'JetBrains Mono',monospace;
     font-size:11px;
@@ -61,7 +60,6 @@
     margin:0 0 20px;
   }
 
-  /* summary bar */
   .summary{
     display:flex;
     gap:10px;
@@ -110,7 +108,6 @@
     color:var(--text-tertiary);
   }
 
-  /* tabs */
   .tabs{
     display:flex;
     gap:2px;
@@ -166,7 +163,6 @@
     border-left:3px solid var(--accent-dim);
     border-radius:4px;
     border:1px solid var(--border-soft);
-    border-left:3px solid var(--accent-dim);
   }
 
   .grid{
@@ -175,7 +171,6 @@
     gap:14px;
   }
 
-  /* card */
   .card{
     background:var(--bg-panel);
     border:1px solid var(--border);
@@ -191,7 +186,6 @@
   }
   .card[data-status="green"]{border-left-color:var(--green);}
   .card[data-status="yellow"]{border-left-color:var(--yellow);}
-  
   .card[data-status="red"] {
     border-left: 5px solid var(--red);
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
@@ -378,7 +372,6 @@
     color:var(--text-primary);
   }
 
-  /* Tier 3 專屬歷史趨勢軌跡列 */
   .trend-history-box {
     background: var(--bg-panel-raised);
     border: 1px solid var(--border-soft);
@@ -444,7 +437,6 @@
     margin-top:8px;
   }
 
-  /* net liquidity & ERP special card */
   .liq-card{
     background:var(--bg-panel);
     border:1px solid var(--border);
@@ -456,7 +448,6 @@
   }
   .liq-card[data-status="green"]{border-left-color:var(--green);}
   .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
-  
   .liq-card[data-status="red"]{
     border-left: 5px solid var(--red);
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
@@ -708,6 +699,12 @@
       reason:'VIX 的波動率，反映尾端風險（黑天鵝事件）的定價。',
       calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
     },
+    // 【更新】SKEW 改為「近一年滾動百分位（1Y Percentile）」判讀
+    {id:'skew', name:'SKEW 指數 (1Y Percentile)', en:'CBOE SKEW INDEX', unit:'%',
+      ref:'🟢 綠燈：< 60% (常態)<br>🟡 黃燈：60% ~ 85% (避險偏高)<br>🔴 紅燈：> 85% (極端尾端風險)',
+      reason:'請至 thetrading.tools/skew-index 輸入「1Y Percentile（近一年百分位）」。排除長期中樞上移干擾，百分位 >85% 代表法人尾端避險需求顯著衝高。<br><span style="color:var(--text-tertiary);">（若查原始點位備用參考：綠 <140、黃 140~155、紅 >155）</span>',
+      calc:(v)=> v==null?'neutral': v>85?'red': v>=60?'yellow':'green'
+    },
   ];
 
   const STATUS_LABEL = {green:'綠燈',yellow:'黃燈',red:'紅燈',neutral:'尚無資料'};
@@ -812,7 +809,6 @@
     return `<span>${label}: <span class="ma-val">${avgStr} ${unit}</span></span><span>(已累積 ${count}/50 筆)</span>`;
   }
 
-  // 渲染 Tier 3 專屬的週歷史軌跡 HTML
   function renderTrendChips(historyList, key, unitStr){
     if(!historyList || historyList.length === 0) return '<span style="color:var(--text-tertiary);">尚未累積歷史資料</span>';
     return historyList.map(item => {
@@ -836,7 +832,6 @@
     return '上次更新: ' + d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
   }
 
-  // ---------- card builder ----------
   function buildCard(cfg){
     const card = document.createElement('div');
     card.className = 'card';
@@ -1032,7 +1027,6 @@
     return {card, refresh};
   }
 
-  // ---------- render tiers ----------
   const allCards = [];
 
   function renderGrid(gridId, list){
@@ -1083,7 +1077,6 @@
         </div>
       </div>
 
-      <!-- 近 12 週歷史趨勢列 -->
       <div class="trend-history-box">
         <div class="trend-history-title">📈 近 12 週淨流動性走勢軌跡 ($B)</div>
         <div class="trend-history-list" id="liqTrendList"></div>
@@ -1150,7 +1143,7 @@
     const netVal = walcl - tga - rrp;
     
     const ok = await saveMetric('netliq', {walcl, tga, rrp, prevNet, date: new Date().toISOString()});
-    await saveHistory('netliq', {netVal: netVal}, 12); // 保存最多 12 筆週紀錄
+    await saveHistory('netliq', {netVal: netVal}, 12);
 
     if(ok){
       showToast('Net Liquidity 已更新並存入歷史');
@@ -1296,7 +1289,6 @@
         </div>
       </div>
 
-      <!-- 近 10 次估值軌跡列 -->
       <div class="trend-history-box">
         <div class="trend-history-title">📊 近 10 次實質 ERP 走勢軌跡 (%)</div>
         <div class="trend-history-list" id="erpTrendList"></div>
@@ -1387,7 +1379,7 @@
 
     const ok = await saveMetric('erp', {pe, date: new Date().toISOString()});
     if (erpVal != null) {
-      await saveHistory('erp', {erpVal: erpVal}, 10); // 保存最多 10 筆估值軌跡
+      await saveHistory('erp', {erpVal: erpVal}, 10);
     }
 
     if (ok) {
@@ -1406,7 +1398,7 @@
     let g=0,y=0,r=0;
     
     const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'us10y', 'us30y', 'gold', 'oil'];
-    const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix'];
+    const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix', 'skew'];
     
     allCards.forEach(({card})=>{
       const cid = card.dataset.id;
