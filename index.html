@@ -636,6 +636,17 @@
         return 'green';
       }
     },
+    // 【更新】USD/JPY 日圓匯率（單日波動率純化判讀 + 日圓走強平倉風險說明）
+    {id:'usdjpy', name:'USD/JPY 日圓匯率', en:'DOLLAR / YEN', unit:'JPY',
+      ref:'🟢 綠燈：單日變動 ≤ 1% (常態平穩)<br>🟡 黃燈：單日變動 1% ~ 2% (波動擴大)<br>🔴 紅燈：單日變動 > 2% (急升平倉警戒)',
+      reason:'目前驅動力偏向日圓走強(央行升息預期),需留意套利平倉風險(下緣 <140),而非傳統的貶值干預風險(上緣 >160)。',
+      calc:(v,d)=> {
+        if(v==null) return 'neutral';
+        if(d!=null && Math.abs(d)>2.0) return 'red';
+        if(d!=null && Math.abs(d)>1.0) return 'yellow';
+        return 'green';
+      }
+    },
     {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%',
       ref:'🔴 紅燈：突破 4.5% 或單日變動 >15bp<br>🟡 黃燈：4.0%~4.5% 或單日變動 8~15bp',
       reason:'無風險利率基準，本表設有絕對高度與單日波動的【雙重防護警報】。',
@@ -969,7 +980,9 @@
           if(deltaEl) deltaEl.innerHTML = fmtDeltaLine(rec.prevValue, rec.value, cfg.unit === 'USD' ? '' : cfg.unit, rec.prevDay);
           if(maEl) maEl.innerHTML = fmtMALine(historyList, 'value', cfg.unit === 'USD' ? '' : cfg.unit);
 
-          const status = cfg.calc(rec.value, cfg.id==='dxy'||cfg.id==='gold'||cfg.id==='oil' ? (d!=null? (d/(rec.prevValue||1)*100) : null) : d);
+          const pctMetrics = ['dxy', 'usdjpy', 'gold', 'oil'];
+          const deltaParam = pctMetrics.includes(cfg.id) ? (d!=null? (d/(rec.prevValue||1)*100) : null) : d;
+          const status = cfg.calc(rec.value, deltaParam);
           applyStatus(status);
         } else {
           if(deltaEl) deltaEl.innerHTML = '<span class="empty">尚無資料</span>';
@@ -1085,7 +1098,7 @@
         ON RRP 緩衝：綠 &gt;200 ・ 黃 50–200 ・ 紅 &lt;50（緩衝耗盡，QT 將直接衝擊市場流動性）
       </div>
       <div class="reason">
-        真正影響市場的是淨流動性，而非單看 Fed 資產負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT 期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
+        真正影響市場的是淨流動性，而非單看 Fed 資產負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
       </div>
       <div class="meta" id="liqMeta">尚未更新</div>
     </div>
@@ -1396,7 +1409,7 @@
   function updateSummary(){
     let g=0,y=0,r=0;
     
-    const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'us10y', 'us30y', 'gold', 'oil'];
+    const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'usdjpy', 'us10y', 'us30y', 'gold', 'oil'];
     const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix', 'skew'];
     
     allCards.forEach(({card})=>{
