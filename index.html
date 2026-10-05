@@ -1,1487 +1,500 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>總經風險儀表板</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg-base:#F4F6F8;
-    --bg-panel:#FFFFFF;
-    --bg-panel-raised:#F8FAFC;
-    --border:#D0D7DE;
-    --border-soft:#E1E4E8;
-    --text-primary:#0F172A;
-    --text-secondary:#475569;
-    --text-tertiary:#64748B;
-    --accent:#9A3412;
-    --accent-dim:#EA580C;
-    --green:#166534;
-    --green-dim:rgba(22,101,52,0.1);
-    --yellow:#854D0E;
-    --yellow-dim:rgba(133,77,14,0.1);
-    --red:#DC2626;
-    --red-dim:rgba(220,38,38,0.08);
-    --neutral:#475569;
-    --neutral-dim:rgba(71,85,105,0.1);
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg-base);}
-  body{
-    font-family:'Noto Sans TC','Space Grotesk',system-ui,sans-serif;
-    color:var(--text-primary);
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0050 雙軌加碼價格溫度計</title>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-main: #111111;
+      --text-muted: #666666;
+      --border-light: #e8e8e8;
+    }
 
-  .eyebrow{
-    font-family:'JetBrains Mono',monospace;
-    font-size:11px;
-    letter-spacing:0.18em;
-    color:var(--accent-dim);
-    text-transform:uppercase;
-    margin-bottom:8px;
-    font-weight:600;
-  }
-  h1{
-    font-family:'Space Grotesk',sans-serif;
-    font-size:26px;
-    font-weight:700;
-    margin:0 0 4px;
-    letter-spacing:-0.01em;
-    color:var(--text-primary);
-  }
-  .subtitle{
-    color:var(--text-secondary);
-    font-size:13px;
-    margin:0 0 20px;
-  }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .summary{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    align-items:center;
-    background:var(--bg-panel);
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:14px 16px;
-    margin-bottom:22px;
-    box-shadow:0 1px 3px rgba(0,0,0,0.05);
-  }
-  .summary-label{
-    font-size:12px;
-    color:var(--text-secondary);
-    margin-right:4px;
-    font-family:'JetBrains Mono',monospace;
-    letter-spacing:0.03em;
-    font-weight:600;
-  }
-  .pill{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:5px 10px;
-    border-radius:20px;
-    font-size:12px;
-    font-family:'JetBrains Mono',monospace;
-    font-weight:600;
-  }
-  .pill .dot{width:7px;height:7px;border-radius:50%;}
-  .pill.green{background:var(--green-dim);color:var(--green);}
-  .pill.yellow{background:var(--yellow-dim);color:var(--yellow);}
-  .pill.red{
-    background:var(--red-dim);
-    color:var(--red);
-    box-shadow: 0 0 8px rgba(220, 38, 38, 0.2);
-    border: 1px solid rgba(220, 38, 38, 0.15);
-  }
-  .pill .dot.green{background:var(--green);}
-  .pill .dot.yellow{background:var(--yellow);}
-  .pill .dot.red{background:var(--red);}
-  .summary-note{
-    margin-left:auto;
-    font-size:11.5px;
-    color:var(--text-tertiary);
-  }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px 16px;
+    }
 
-  .tabs{
-    display:flex;
-    gap:2px;
-    border-bottom:2px solid var(--border-soft);
-    margin-bottom:22px;
-  }
-  .tab-btn{
-    background:none;
-    border:none;
-    color:var(--text-tertiary);
-    font-family:'Space Grotesk',sans-serif;
-    font-size:14px;
-    font-weight:600;
-    padding:10px 18px 12px;
-    cursor:pointer;
-    position:relative;
-    letter-spacing:0.01em;
-    transition:color 0.2s ease;
-  }
-  .tab-btn .tab-sub{
-    display:block;
-    font-family:'JetBrains Mono',monospace;
-    font-size:10px;
-    font-weight:500;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
-    margin-top:2px;
-    color:var(--text-tertiary);
-  }
-  .tab-btn.active{color:var(--text-primary);}
-  .tab-btn.active .tab-sub{color:var(--accent-dim);}
-  .tab-btn.active::after{
-    content:'';
-    position:absolute;
-    left:0;right:0;bottom:-2px;
-    height:3px;
-    background:var(--accent-dim);
-    border-radius:3px 3px 0 0;
-  }
-  .tab-btn:hover{color:var(--text-primary);}
+    /* 第一幕：免捲軸全頁 */
+    .screen-1 {
+      min-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-bottom: 8px;
+    }
 
-  .tab-panel{display:none;}
-  .tab-panel.active{display:block;animation:fadein 0.25s ease;}
-  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+    .header-title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 8px 0 12px 0;
+    }
 
-  .tab-intro{
-    font-size:12.5px;
-    color:var(--text-secondary);
-    margin:0 0 16px;
-    line-height:1.6;
-    padding:10px 14px;
-    background:var(--bg-panel-raised);
-    border-left:3px solid var(--accent-dim);
-    border-radius:4px;
-    border:1px solid var(--border-soft);
-  }
+    /* 純淨輸入區 */
+    .input-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 32px;
+      background: #fafafa;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+      margin-bottom: 10px;
+    }
 
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
-    gap:14px;
-  }
+    .input-item { display: flex; align-items: center; gap: 8px; }
+    .input-item label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+    .input-item input {
+      width: 100px; text-align: center; font-size: 18px; font-weight: 700;
+      border: 1px solid #ccc; border-radius: 6px; padding: 5px 0; outline: none; background: #fff;
+    }
 
-  .card{
-    background:var(--bg-panel);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:16px;
-    position:relative;
-    border-left:4px solid var(--neutral);
-    box-shadow:0 1px 3px rgba(0,0,0,0.02);
-    transition:transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  .card:hover {
-    box-shadow:0 4px 12px rgba(0,0,0,0.05);
-  }
-  .card[data-status="green"]{border-left-color:var(--green);}
-  .card[data-status="yellow"]{border-left-color:var(--yellow);}
-  .card[data-status="red"] {
-    border-left: 5px solid var(--red);
-    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
-  }
+    /* CNN 100% 正半圓儀表板 */
+    .gauge-wrapper {
+      position: relative;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px 16px 12px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-light);
+      text-align: center;
+    }
 
-  .card-head{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    margin-bottom:10px;
-  }
-  .card-name{
-    font-family:'Space Grotesk',sans-serif;
-    font-size:15px;
-    font-weight:700;
-    color:var(--text-primary);
-  }
-  .card-name .en{
-    display:block;
-    font-family:'JetBrains Mono',monospace;
-    font-size:10px;
-    font-weight:500;
-    color:var(--text-tertiary);
-    letter-spacing:0.04em;
-    margin-top:2px;
-  }
-  .status-badge{
-    font-family:'JetBrains Mono',monospace;
-    font-size:10px;
-    font-weight:700;
-    padding:3px 8px;
-    border-radius:20px;
-    letter-spacing:0.03em;
-    white-space:nowrap;
-  }
-  .status-badge.green{background:var(--green-dim);color:var(--green);}
-  .status-badge.yellow{background:var(--yellow-dim);color:var(--yellow);}
-  .status-badge.red{background:var(--red-dim);color:var(--red);}
-  .status-badge.neutral{background:var(--neutral-dim);color:var(--text-secondary);}
+    .arc-sector { fill: #f4f4f4; stroke: #ffffff; stroke-width: 3; transition: fill 0.3s, stroke 0.3s; }
+    .arc-text { font-size: 13px; font-weight: 800; fill: #444444; letter-spacing: 0.5px; }
+    .tick-text { font-size: 12px; font-weight: 700; fill: #777777; }
 
-  .double-input-row {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-  .input-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .input-col label {
-    font-size: 10px;
-    font-weight: bold;
-    color: var(--text-tertiary);
-  }
-  .input-field-wrapper {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-  }
-  .input-field-wrapper input {
-    width: 100%;
-    background: var(--bg-base);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    font-family:'JetBrains Mono',monospace;
-    font-size: 13px;
-    padding: 6px 8px;
-    border-radius: 7px;
-    outline: none;
-    transition: border-color 0.2s ease, background 0.2s ease;
-  }
-  .input-field-wrapper input:focus{border-color:var(--accent-dim);background:#FFFFFF;}
-  .input-field-wrapper .unit {
-    font-family:'JetBrains Mono',monospace;
-    font-size:10px;
-    color:var(--text-tertiary);
-    font-weight:600;
-  }
+    /* 行動提示卡片 */
+    .action-card {
+      background: #f9f9f9; border-radius: 10px; padding: 12px 16px;
+      text-align: left; margin-top: 10px; border-left: 5px solid #111;
+    }
+    .action-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+    .action-text { font-size: 15px; line-height: 1.5; color: var(--text-main); }
 
-  .input-row{
-    display:flex;
-    gap:8px;
-    margin-bottom:10px;
-  }
-  .input-row input{
-    flex:1;
-    min-width:0;
-    background:var(--bg-base);
-    border:1px solid var(--border);
-    color:var(--text-primary);
-    font-family:'JetBrains Mono',monospace;
-    font-size:14px;
-    padding:8px 10px;
-    border-radius:7px;
-    outline:none;
-    transition:border-color 0.2s ease, background 0.2s ease;
-  }
-  .input-row input:focus{border-color:var(--accent-dim);background:#FFFFFF;}
-  .input-row .unit{
-    font-family:'JetBrains Mono',monospace;
-    font-size:11px;
-    color:var(--text-tertiary);
-    align-self:center;
-    min-width:34px;
-    font-weight:600;
-  }
-  .save-btn{
-    background:var(--accent-dim);
-    border:none;
-    color:#FFFFFF;
-    font-family:'Space Grotesk',sans-serif;
-    font-size:12.5px;
-    font-weight:700;
-    padding:0 14px;
-    border-radius:7px;
-    cursor:pointer;
-    white-space:nowrap;
-    transition:background 0.2s ease;
-  }
-  .save-btn:hover{background:var(--accent);}
-  .save-btn:active{transform:scale(0.98);}
+    /* 第二幕：關卡對照表 */
+    .screen-2 { padding-top: 24px; padding-bottom: 40px; }
+    .table-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
 
-  .double-row-result {
-    background: var(--bg-panel-raised);
-    border: 1px solid var(--border-soft);
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    margin-bottom: 10px;
-    display: block;
-    line-height: 2;
-  }
-  .double-row-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .double-row-divider {
-    border-bottom: 1px dashed var(--border-soft);
-    padding-bottom: 8px;
-    margin-bottom: 8px;
-  }
-  .result-num-bold {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-light);
+    }
+    th { padding: 12px 8px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border-light); background: #fafafa; }
+    td { padding: 11px 8px; text-align: center; border-bottom: 1px solid var(--border-light); }
 
-  .delta-info{
-    font-family:'JetBrains Mono',monospace;
-    font-size:11px;
-    color:var(--text-secondary);
-    background:var(--bg-panel-raised);
-    border:1px solid var(--border-soft);
-    border-radius:6px;
-    padding:6px 10px;
-    margin-bottom:6px;
-    line-height:1.5;
-  }
-  .delta-info .arrow-up{color:var(--red);font-weight:700;}
-  .delta-info .arrow-down{color:var(--green);font-weight:700;}
-  .delta-info .arrow-flat{color:var(--text-tertiary);font-weight:700;}
-  .delta-info .empty{color:var(--text-tertiary);}
+    tr.active-row { background-color: #fff8e1 !important; font-weight: 700; }
+    tr.triggered-row { color: #aaa; background-color: #fafafa; }
 
-  .ma-info{
-    font-family:'JetBrains Mono',monospace;
-    font-size:10.5px;
-    color:var(--text-tertiary);
-    background:rgba(0,0,0,0.02);
-    border:1px dashed var(--border-soft);
-    border-radius:6px;
-    padding:5px 9px;
-    margin-bottom:10px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-  }
-  .ma-info .ma-val{
-    font-weight:bold;
-    color:var(--text-primary);
-  }
+    .tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .tag-left { background-color: #e8f5e9; color: #2e7d32; }
+    .tag-right { background-color: #fff3e0; color: #ef6c00; }
 
-  .trend-history-box {
-    background: var(--bg-panel-raised);
-    border: 1px solid var(--border-soft);
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-  }
-  .trend-history-title {
-    font-weight: bold;
-    color: var(--text-tertiary);
-    margin-bottom: 4px;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .trend-history-list {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    white-space: nowrap;
-  }
-  .trend-chip {
-    background: #FFFFFF;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 10.5px;
-    color: var(--text-secondary);
-  }
-  .trend-chip .date { color: var(--text-tertiary); font-size: 9.5px; margin-right: 4px; }
-  .trend-chip .val { font-weight: bold; color: var(--text-primary); }
-
-  .threshold-ref{
-    font-family:'JetBrains Mono',monospace;
-    font-size:10.5px;
-    color:var(--text-tertiary);
-    margin-bottom:8px;
-    line-height:1.5;
-    font-weight:500;
-    margin-top:10px;
-  }
-  .reason{
-    font-size:12px;
-    color:var(--text-secondary);
-    line-height:1.55;
-    border-top:1px solid var(--border-soft);
-    padding-top:8px;
-    margin-top:2px;
-  }
-  .grey-desc {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    margin-top: 4px;
-    line-height: 1.4;
-  }
-  .meta{
-    font-family:'JetBrains Mono',monospace;
-    font-size:10px;
-    color:var(--text-tertiary);
-    margin-top:8px;
-  }
-
-  .liq-card{
-    background:var(--bg-panel);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:20px;
-    border-left:4px solid var(--neutral);
-    box-shadow:0 1px 3px rgba(0,0,0,0.02);
-    margin-bottom: 20px;
-  }
-  .liq-card[data-status="green"]{border-left-color:var(--green);}
-  .liq-card[data-status="yellow"]{border-left-color:var(--yellow);}
-  .liq-card[data-status="red"]{
-    border-left: 5px solid var(--red);
-    box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
-  }
-  
-  .liq-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
-    gap:12px;
-    margin:14px 0;
-  }
-  .liq-field label{
-    display:block;
-    font-family:'JetBrains Mono',monospace;
-    font-size:10.5px;
-    color:var(--text-secondary);
-    margin-bottom:5px;
-    letter-spacing:0.03em;
-    font-weight:600;
-  }
-  .liq-field input{
-    width:100%;
-    background:var(--bg-base);
-    border:1px solid var(--border);
-    color:var(--text-primary);
-    font-family:'JetBrains Mono',monospace;
-    font-size:14px;
-    padding:8px 10px;
-    border-radius:7px;
-    outline:none;
-    transition:border-color 0.2s ease, background 0.2s ease;
-  }
-  .liq-field input:focus{border-color:var(--accent-dim);background:#FFFFFF;}
-  .liq-result{
-    background:var(--bg-panel-raised);
-    border:1px solid var(--border-soft);
-    border-radius:8px;
-    padding:14px 16px;
-    margin:14px 0;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .liq-result .num{
-    font-family:'JetBrains Mono',monospace;
-    font-size:22px;
-    font-weight:700;
-    color:var(--text-primary);
-  }
-  .liq-result .lbl{
-    font-size:11.5px;
-    color:var(--text-tertiary);
-    font-family:'JetBrains Mono',monospace;
-    letter-spacing:0.03em;
-    font-weight:600;
-  }
-
-  .reset-line{
-    text-align:center;
-    margin-top:28px;
-  }
-  .reset-line button{
-    background:none;
-    border:1px solid var(--border);
-    color:var(--text-tertiary);
-    font-size:11.5px;
-    padding:7px 14px;
-    border-radius:20px;
-    cursor:pointer;
-    font-family:'JetBrains Mono',monospace;
-    transition:all 0.2s ease;
-  }
-  .reset-line button:hover{color:var(--text-secondary);border-color:var(--text-secondary);background:rgba(0,0,0,0.02);}
-
-  .toast{
-    position:fixed;
-    bottom:20px;
-    left:50%;
-    transform:translateX(-50%) translateY(20px);
-    background:var(--text-primary);
-    color:var(--bg-panel);
-    font-size:12.5px;
-    padding:10px 18px;
-    border-radius:8px;
-    opacity:0;
-    pointer-events:none;
-    transition:all 0.25s ease;
-    z-index:100;
-    box-shadow:0 4px 12px rgba(0,0,0,0.15);
-  }
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-  @media (max-width:520px){
-    .grid{grid-template-columns:1fr;}
-    h1{font-size:22px;}
-  }
-</style>
+    /* 折疊按鈕控制樣式 */
+    .toggle-row {
+      background-color: #f1f3f4;
+      cursor: pointer;
+      font-weight: 700;
+      color: #3c4043;
+      user-select: none;
+      transition: background-color 0.2s;
+    }
+    .toggle-row:hover {
+      background-color: #e8eaed;
+    }
+    .toggle-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .arrow-icon {
+      display: inline-block;
+      transition: transform 0.3s ease;
+      font-size: 12px;
+    }
+    .arrow-icon.collapsed {
+      transform: rotate(-90deg);
+    }
+    .hidden-group {
+      display: none;
+    }
+    .hidden-group.show {
+      display: table-row-group;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
 
-  <div class="eyebrow">MACRO RISK MONITOR</div>
-  <h1>總經風險儀表板</h1>
-  <p class="subtitle">依查看頻率分層:每日速覽、每週檢視、結構性追蹤 — 數值輸入後自動儲存</p>
+<div class="screen-1">
+  <div>
+    <div class="header-title">0050 雙軌加碼價格溫度計</div>
 
-  <div class="summary" id="summaryBar">
-    <span class="summary-label">整體燈號</span>
-    <span class="pill green"><span class="dot green"></span><span id="cntGreen">0</span> 綠燈</span>
-    <span class="pill yellow"><span class="dot yellow"></span><span id="cntYellow">0</span> 黃燈</span>
-    <span class="pill red"><span class="dot red"></span><span id="cntRed">0</span> 紅燈</span>
-    <span class="summary-note">紅/黃燈同時出現 2 項以上，建議重新檢視配置</span>
+    <!-- 簡約輸入區 -->
+    <div class="input-box">
+      <div class="input-item">
+        <label for="anchorInput">定錨最高價</label>
+        <input type="number" id="anchorInput" value="116" step="0.1">
+      </div>
+      <div class="input-item">
+        <label for="priceInput">目前 0050 價格</label>
+        <input type="number" id="priceInput" placeholder="抓取中..." step="0.01">
+      </div>
+    </div>
+
+    <!-- CNN 正半圓儀表板 -->
+    <div class="gauge-wrapper">
+      <svg width="100%" height="250" viewBox="0 0 500 270">
+        <defs>
+          <path id="textPath1" d="M 36 250 A 214 214 0 0 1 79 120" />
+          <path id="textPath2" d="M 82 114 A 214 214 0 0 1 184 38" />
+          <path id="textPath3" d="M 190 34 A 214 214 0 0 1 310 34" />
+          <path id="textPath4" d="M 316 38 A 214 214 0 0 1 418 114" />
+          <path id="textPath5" d="M 421 120 A 214 214 0 0 1 464 250" />
+        </defs>
+
+        <!-- 扇形區塊 -->
+        <path id="sector0" class="arc-sector" d="M 50 250 A 200 200 0 0 1 90 128 L 132 153 A 140 140 0 0 0 104 250 Z"/>
+        <path id="sector1" class="arc-sector" d="M 93 123 A 200 200 0 0 1 188 52 L 202 99 A 140 140 0 0 0 135 149 Z"/>
+        <path id="sector2" class="arc-sector" d="M 194 50 A 200 200 0 0 1 306 50 L 289 98 A 140 140 0 0 0 211 98 Z"/>
+        <path id="sector3" class="arc-sector" d="M 312 52 A 200 200 0 0 1 407 123 L 365 149 A 140 140 0 0 0 298 99 Z"/>
+        <path id="sector4" class="arc-sector" d="M 410 128 A 200 200 0 0 1 450 250 L 396 250 A 140 140 0 0 0 368 153 Z"/>
+
+        <!-- 中文分區標籤 -->
+        <text class="arc-text"><textPath href="#textPath1" startOffset="50%" text-anchor="middle">深度特價</textPath></text>
+        <text class="arc-text"><textPath href="#textPath2" startOffset="50%" text-anchor="middle">右手加碼</textPath></text>
+        <text class="arc-text"><textPath href="#textPath3" startOffset="50%" text-anchor="middle">雙軌甜蜜點</textPath></text>
+        <text class="arc-text"><textPath href="#textPath4" startOffset="50%" text-anchor="middle">左手啟動</textPath></text>
+        <text class="arc-text"><textPath href="#textPath5" startOffset="50%" text-anchor="middle">高價觀望</textPath></text>
+
+        <!-- 內圈刻度 -->
+        <g fill="#777777">
+          <text x="80" y="245" class="tick-text" text-anchor="middle">-30%</text>
+          <text x="146" y="170" class="tick-text" text-anchor="middle">-22.5%</text>
+          <text x="250" y="128" class="tick-text" text-anchor="middle">-15%</text>
+          <text x="354" y="170" class="tick-text" text-anchor="middle">-7.5%</text>
+          <text x="420" y="245" class="tick-text" text-anchor="middle">0%</text>
+
+          <circle cx="95" cy="225" r="2"/><circle cx="100" cy="200" r="2"/>
+          <circle cx="112" cy="176" r="2"/><circle cx="132" cy="155" r="2"/>
+          <circle cx="157" cy="139" r="2"/><circle cx="185" cy="128" r="2"/>
+          <circle cx="215" cy="122" r="2"/><circle cx="285" cy="122" r="2"/>
+          <circle cx="315" cy="128" r="2"/><circle cx="343" cy="139" r="2"/>
+          <circle cx="368" cy="155" r="2"/><circle cx="388" cy="176" r="2"/>
+          <circle cx="400" cy="200" r="2"/><circle cx="405" cy="225" r="2"/>
+        </g>
+
+        <!-- 指針 -->
+        <g id="needle">
+          <line x1="250" y1="250" x2="250" y2="80" stroke="#111111" stroke-width="5" stroke-linecap="round"/>
+        </g>
+
+        <!-- 中央數字球 -->
+        <circle cx="250" cy="250" r="50" fill="#ffffff" filter="drop-shadow(0px 2px 6px rgba(0,0,0,0.1))"/>
+        <text id="scoreNum" x="250" y="262" text-anchor="middle" font-size="24" font-weight="900" fill="#111111">載入中</text>
+      </svg>
+    </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="t1">Tier 1<span class="tab-sub">每日速覽</span></button>
-    <button class="tab-btn" data-tab="t2">Tier 2<span class="tab-sub">每週檢視</span></button>
-    <button class="tab-btn" data-tab="t3">Tier 3<span class="tab-sub">結構性追蹤</span></button>
+  <!-- 行動提示卡片 -->
+  <div id="actionCard" class="action-card">
+    <div class="action-title" id="actionTitle">建議執行動作</div>
+    <div id="actionText" class="action-text">資料連線中...</div>
   </div>
-
-  <!-- TIER 1 -->
-  <div class="tab-panel active" id="panel-t1">
-    <p class="tab-intro">每天 10–30 秒快速掃描即可，只需注意是否觸及警戒門檻，不需要細讀每日漲跌。</p>
-    <div class="grid" id="grid-t1"></div>
-  </div>
-
-  <!-- TIER 2 -->
-  <div class="tab-panel" id="panel-t2">
-    <p class="tab-intro">結構性變化以週為單位，每天盯盤多為雜訊。建議固定每週五收盤後檢視一次。</p>
-    <div class="grid" id="grid-t2"></div>
-  </div>
-
-  <!-- TIER 3 -->
-  <div class="tab-panel" id="panel-t3">
-    <p class="tab-intro">Fed 資料本身每週更新（WALCL 每週三、TGA 每日更新），此分頁重點在辨識結構性轉折，而非每日訊號。</p>
-    <div id="liqContainer"></div>
-    <div id="sofrContainer"></div>
-    <div id="erpContainer"></div>
-  </div>
-
-  <div class="reset-line">
-    <button id="resetBtn">清除所有已儲存數值</button>
-  </div>
-
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- 第二幕：關卡對照表 -->
+<div class="screen-2">
+  <div class="table-title">雙軌加碼關卡清單</div>
+  <table>
+    <thead>
+      <tr>
+        <th>關卡</th>
+        <th>對應關級</th>
+        <th>觸發價</th>
+        <th>折扣度</th>
+        <th>買入股數</th>
+        <th>預估金額</th>
+        <th>狀態</th>
+      </tr>
+    </thead>
+    <!-- 主要顯示區（≥ 70 元） -->
+    <tbody id="mainTableBody"></tbody>
+
+    <!-- 摺疊控制按鈕 -->
+    <tbody>
+      <tr class="toggle-row" onclick="toggleLowPriceRows()">
+        <td colspan="7">
+          <div class="toggle-content">
+            <span id="arrowIcon" class="arrow-icon collapsed">▼</span>
+            <span id="toggleText">展開 70 元以下關卡 (共 0 關)</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+
+    <!-- 隱藏折疊區（< 70 元） -->
+    <tbody id="lowPriceTableBody" class="hidden-group"></tbody>
+  </table>
+</div>
 
 <script>
-(function(){
+const anchorInput = document.getElementById('anchorInput');
+const priceInput = document.getElementById('priceInput');
+const needle = document.getElementById('needle');
+const scoreNum = document.getElementById('scoreNum');
+const actionCard = document.getElementById('actionCard');
+const actionTitle = document.getElementById('actionTitle');
+const actionText = document.getElementById('actionText');
 
-  let currentActiveTab = 't1';
+const mainTableBody = document.getElementById('mainTableBody');
+const lowPriceTableBody = document.getElementById('lowPriceTableBody');
+const arrowIcon = document.getElementById('arrowIcon');
+const toggleText = document.getElementById('toggleText');
 
-  // ---------- config ----------
-  const TIER1 = [
-    {id:'fg', name:'F&G 指數', en:'FEAR & GREED', unit:'',
-      ref:'🟢 綠燈：45~55 (中立)<br>🟡 黃燈：25~45 (恐懼) 或 55~75 (貪婪)<br>🔴 紅燈：<25 (極度恐懼) 或 >75 (極度貪婪)',
-      reason:'同步 CNN 官方五大區間。當市場陷入「Fear」或「Greed」時點亮黃燈警戒；落入極端區間時點亮紅燈。',
-      calc:(v)=> {
-        if(v==null) return 'neutral';
-        if(v < 25 || v > 75) return 'red';      
-        if(v < 45 || v > 55) return 'yellow';   
-        return 'green';                         
-      }
-    },
-    {id:'vix_vxn', name:'VIX & VXN 波動率雙指標', en:'MARKET VOLATILITY', isDouble: true,
-      ref:'VIX門檻: 綠<20・黃20-30・紅>30<br>VXN門檻: 綠<25・黃25-35・紅>35',
-      reason:'VIX反映大盤；VXN反映那指科技股。當VXN/VIX比率 >1.3時，代表科技股壓力顯著高於大盤，需提防台積電與0050等權值股回檔。',
-      calc:(vix, vxn) => {
-        if(vix == null && vxn == null) return 'neutral';
-        const vixStatus = vix == null ? 'green' : (vix > 30 ? 'red' : (vix >= 20 ? 'yellow' : 'green'));
-        const vxnStatus = vxn == null ? 'green' : (vxn > 35 ? 'red' : (vxn >= 25 ? 'yellow' : 'green'));
-        if (vixStatus === 'red' || vxnStatus === 'red') return 'red';
-        if (vixStatus === 'yellow' || vxnStatus === 'yellow') return 'yellow';
-        return 'green';
-      }
-    },
-    {id:'dxy', name:'DXY 美元指數', en:'DOLLAR INDEX', unit:'pts',
-      ref:'🟡 黃燈：突破 101 或單日變動 >2%（防護警報）',
-      reason:'全球風險資產的資金定價總閘門。本表設有絕對值與波動幅度的雙重防護警報。',
-      calc:(v,d)=> {
-        if(v==null) return 'neutral';
-        if(v >= 101) return 'yellow';
-        if(d!=null && Math.abs(d)>2) return 'yellow';
-        return 'green';
-      }
-    },
-    // 【更新】USD/JPY 日圓匯率（單日波動率純化判讀 + 日圓走強平倉風險說明）
-    {id:'usdjpy', name:'USD/JPY 日圓匯率', en:'DOLLAR / YEN', unit:'JPY',
-      ref:'🟢 綠燈：單日變動 ≤ 1% (常態平穩)<br>🟡 黃燈：單日變動 1% ~ 2% (波動擴大)<br>🔴 紅燈：單日變動 > 2% (急升平倉警戒)',
-      reason:'目前驅動力偏向日圓走強(央行升息預期),需留意套利平倉風險(下緣 <140),而非傳統的貶值干預風險(上緣 >160)。',
-      calc:(v,d)=> {
-        if(v==null) return 'neutral';
-        if(d!=null && Math.abs(d)>2.0) return 'red';
-        if(d!=null && Math.abs(d)>1.0) return 'yellow';
-        return 'green';
-      }
-    },
-    {id:'us10y', name:'美債 10Y 殖利率', en:'US 10Y YIELD', unit:'%',
-      ref:'🔴 紅燈：突破 4.5% 或單日變動 >15bp<br>🟡 黃燈：4.0%~4.5% 或單日變動 8~15bp',
-      reason:'無風險利率基準，本表設有絕對高度與單日波動的【雙重防護警報】。',
-      calc:(v,d)=> {
-        if(v==null) return 'neutral';
-        if(v > 4.5) return 'red';
-        if(v >= 4.0) return 'yellow';
-        if(d != null) {
-          const bp = Math.abs(d) * 100;
-          if(bp > 15) return 'red';
-          if(bp > 8) return 'yellow';
-        }
-        return 'green';
-      }
-    },
-    {id:'us30y', name:'美債 30Y 殖利率', en:'US 30Y YIELD', unit:'%',
-      ref:'🔴 紅燈：突破 5.0% 或單日變動 >15bp<br>🟡 黃燈：4.5%~5.0% 或單日變動 8~15bp',
-      reason:'長天期通膨預期與財政壓力的定價，本表設有【雙重防護警報】。',
-      calc:(v,d)=> {
-        if(v==null) return 'neutral';
-        if(v > 5.0) return 'red';
-        if(v >= 4.5) return 'yellow';
-        if(d != null) {
-          const bp = Math.abs(d) * 100;
-          if(bp > 15) return 'red';
-          if(bp > 8) return 'yellow';
-        }
-        return 'green';
-      }
-    },
-    {id:'gold', name:'黃金價格', en:'GOLD (USD/OZ)', unit:'USD',
-      ref:'黃：單日變動 >2%（避險需求升溫）',
-      reason:'避險資產與實質利率的鏡像走勢。',
-      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>2)?'yellow':'green'
-    },
-    {id:'oil', name:'原油價格 (WTI)', en:'WTI CRUDE', unit:'USD',
-      ref:'綠 <3% ・ 黃 3–5% ・ 紅 >5%（單日變動）',
-      reason:'通膨與地緣政治風險的即時反應指標。',
-      calc:(v,d)=> v==null?'neutral': (d!=null && Math.abs(d)>5)?'red': (d!=null && Math.abs(d)>3)?'yellow':'green'
-    },
-  ];
+let isExpanded = false;
 
-  const TIER2 = [
-    {id:'move', name:'MOVE 指數', en:'BOND VOLATILITY', unit:'pts',
-      ref:'綠 <100 ・ 黃 100–130 ・ 紅 >130',
-      reason:'債券版 VIX，反映利率市場的波動與壓力。',
-      calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
-    },
-    {id:'hyoas', name:'HY OAS 信用利差', en:'ICE BOFA HY OAS', unit:'bps',
-      ref:'綠 <350 ・ 黃 350–500 ・ 紅 >500',
-      reason:'信用市場對企業違約風險的定價，常領先股市 2–4 週。目前約 270bp，處於歷史偏樂觀區間。',
-      calc:(v)=> v==null?'neutral': v>500?'red': v>=350?'yellow':'green'
-    },
-    {id:'t10y2y', name:'T10Y2Y 殖利率曲線', en:'2S10S SPREAD', unit:'%',
-      ref:'綠 >0（正常）・ 黃 -0.1〜0（接近倒掛）・ 紅 <-0.1（倒掛）',
-      reason:'史上最可靠的衰退領先指標之一，目前約 +0.3〜0.5%，已脫離倒掛。',
-      calc:(v)=> v==null?'neutral': v<-0.1?'red': v<0?'yellow':'green'
-    },
-    {id:'vvix', name:'VVIX', en:'VOL OF VIX', unit:'pts',
-      ref:'綠 <100 ・ 黃 100–130 ・ 紅 >130',
-      reason:'VIX 的波動率，反映尾端風險（黑天鵝事件）的定價。',
-      calc:(v)=> v==null?'neutral': v>130?'red': v>=100?'yellow':'green'
-    },
-    {id:'skew', name:'SKEW 指數 (1Y Percentile)', en:'CBOE SKEW INDEX', unit:'%',
-      ref:'🟢 綠燈：< 60% (常態)<br>🟡 黃燈：60% ~ 85% (避險偏高)<br>🔴 紅燈：> 85% (極端尾端風險)',
-      reason:'深度價外選擇權的偏斜定價,反映法人為「黑天鵝」尾端崩盤買保護的貴不貴。',
-      calc:(v)=> v==null?'neutral': v>85?'red': v>=60?'yellow':'green'
-    },
-  ];
+const highlightColors = [
+  { fill: '#fbe9e7', stroke: '#ff5722' },
+  { fill: '#ffe0b2', stroke: '#fb8c00' },
+  { fill: '#fff9c4', stroke: '#fbc02d' },
+  { fill: '#e8f5e9', stroke: '#4caf50' },
+  { fill: '#eceff1', stroke: '#78909c' }
+];
 
-  const STATUS_LABEL = {green:'綠燈',yellow:'黃燈',red:'紅燈',neutral:'尚無資料'};
+// 左手策略基準（固定比率以維持定錨連動）
+const leftRatios = [
+  Math.pow(0.92, 1),
+  Math.pow(0.92, 2),
+  Math.pow(0.92, 3),
+  Math.pow(0.92, 4),
+  Math.pow(0.92, 5),
+  Math.pow(0.92, 6),
+  Math.pow(0.92, 7),
+  Math.pow(0.92, 8),
+  Math.pow(0.92, 9),
+  Math.pow(0.92, 10),
+  Math.pow(0.92, 11),
+  Math.pow(0.92, 12),
+  Math.pow(0.92, 13),
+  Math.pow(0.92, 14)
+];
 
-  // ---------- storage helpers ----------
-  async function loadMetric(id){
-    try{
-      const r = localStorage.getItem('metric:'+id);
-      return r ? JSON.parse(r) : null;
-    }catch(e){ return null; }
+const leftShares = [1000, 1000, 2000, 2000, 3000, 3000, 4000, 4000, 5000, 5000, 5000, 5000, 5000, 5000];
+
+// 右手策略基準
+const rightRatios = [0.90, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60, 0.55, 0.50, 0.45, 0.40];
+const rightShares = [1000, 2000, 2000, 3000, 3000, 4000, 4000, 4000, 5000, 5000, 5000];
+
+function toggleLowPriceRows() {
+  isExpanded = !isExpanded;
+  if (isExpanded) {
+    lowPriceTableBody.classList.add('show');
+    arrowIcon.classList.remove('collapsed');
+  } else {
+    lowPriceTableBody.classList.remove('show');
+    arrowIcon.classList.add('collapsed');
   }
-  async function saveMetric(id, data){
-    try{
-      localStorage.setItem('metric:'+id, JSON.stringify(data));
-      return true;
-    }catch(e){ return false; }
-  }
-  async function deleteMetric(id){
-    try{ 
-      localStorage.removeItem('metric:'+id);
-      localStorage.removeItem('history:'+id);
-    }catch(e){}
-  }
+  updateToggleText();
+}
 
-  function todayStr(){
-    const d = new Date();
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function updateToggleText() {
+  const count = lowPriceTableBody.children.length;
+  if (isExpanded) {
+    toggleText.textContent = `收合 70 元以下關卡 (共 ${count} 關)`;
+  } else {
+    toggleText.textContent = `展開 70 元以下關卡 (共 ${count} 關)`;
   }
-  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+}
 
-  async function loadHistory(id){
-    try{
-      const r = localStorage.getItem('history:'+id);
-      return r ? JSON.parse(r) : [];
-    }catch(e){ return []; }
-  }
-
-  async function saveHistory(id, entry, maxLen = 90){
-    let list = await loadHistory(id);
-    const today = todayStr();
-    const idx = list.findIndex(item => item.day === today);
-    if(idx >= 0){
-      list[idx] = Object.assign({}, list[idx], entry, {day: today});
-    } else {
-      list.push(Object.assign({}, entry, {day: today}));
-    }
-    if(list.length > maxLen) list = list.slice(list.length - maxLen);
-    localStorage.setItem('history:'+id, JSON.stringify(list));
-    return list;
-  }
-
-  function buildDayLockedRecord(oldRec, newFields){
-    const today = todayStr();
-    const rec = Object.assign({}, newFields, {day: today, date: new Date().toISOString()});
-    if(oldRec && oldRec.day === today){
-      Object.keys(oldRec).forEach(k=>{
-        if(k.indexOf('prev') === 0) rec[k] = oldRec[k];
-      });
-      rec.prevDay = oldRec.prevDay || null;
-    } else if(oldRec){
-      Object.keys(newFields).forEach(k=>{
-        rec['prev'+cap(k)] = (oldRec[k] != null) ? oldRec[k] : null;
-      });
-      rec.prevDay = oldRec.day || null;
-    } else {
-      Object.keys(newFields).forEach(k=>{
-        rec['prev'+cap(k)] = null;
-      });
-      rec.prevDay = null;
-    }
-    return rec;
-  }
-
-  function fmtDeltaLine(prevVal, curVal, unit, prevDay){
-    unit = unit || '';
-    if(prevVal == null || curVal == null){
-      return '<span class="empty">尚無前一交易日資料（今日為首次記錄）</span>';
-    }
-    const diff = curVal - prevVal;
-    const arrowClass = diff > 0 ? 'arrow-up' : (diff < 0 ? 'arrow-down' : 'arrow-flat');
-    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '—');
-    const diffStr = (diff >= 0 ? '+' : '') + diff.toFixed(diff !== 0 && Math.abs(diff) < 1 ? 3 : 2);
-    return `前一交易日 (${prevDay||'—'}): ${prevVal}${unit} → 今日: ${curVal}${unit} `
-         + `<span class="${arrowClass}">${arrow} ${diffStr}${unit}</span>`;
-  }
-
-  function fmtMALine(historyList, key, unit){
-    unit = unit || '';
-    if(!historyList || historyList.length === 0){
-      return '<span>MA50: —</span><span>(累積 0/50 筆)</span>';
-    }
-    const validVals = historyList.map(item => item[key]).filter(v => v != null && !isNaN(v));
-    const count = validVals.length;
-    if(count === 0){
-      return '<span>MA50: —</span><span>(累積 0/50 筆)</span>';
-    }
-    const recentVals = validVals.slice(-50);
-    const sum = recentVals.reduce((a, b) => a + b, 0);
-    const avg = sum / recentVals.length;
-    const avgStr = avg.toFixed(avg < 1 && avg > -1 ? 3 : 2);
-    const label = count >= 50 ? 'MA50' : `均值(近${count}日)`;
-    return `<span>${label}: <span class="ma-val">${avgStr} ${unit}</span></span><span>(已累積 ${count}/50 筆)</span>`;
-  }
-
-  function renderTrendChips(historyList, key, unitStr){
-    if(!historyList || historyList.length === 0) return '<span style="color:var(--text-tertiary);">尚未累積歷史資料</span>';
-    return historyList.map(item => {
-      const v = item[key];
-      const valText = (v != null) ? (v >= 0 && key==='erpVal' ? '+' : '') + Number(v).toFixed(2) + unitStr : '—';
-      return `<div class="trend-chip"><span class="date">${item.day.slice(5)}</span><span class="val">${valText}</span></div>`;
-    }).join('');
-  }
-
-  function showToast(msg){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(showToast._h);
-    showToast._h = setTimeout(()=>t.classList.remove('show'), 1800);
-  }
-
-  function fmtTime(iso){
-    if(!iso) return '尚未更新';
-    const d = new Date(iso);
-    return '上次更新: ' + d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
-  }
-
-  function buildCard(cfg){
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.dataset.status = 'neutral';
-    card.dataset.id = cfg.id;
+async function fetchLivePrice() {
+  try {
+    const timestamp = new Date().getTime();
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/0050.TW?interval=1m&_=${timestamp}`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
     
-    if (cfg.isDouble) {
-      card.innerHTML = `
-        <div class="card-head">
-          <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
-          <span class="status-badge neutral" data-role="badge">尚無資料</span>
-        </div>
-        <div class="double-input-row">
-          <div class="input-col">
-            <label>VIX (大盤)</label>
-            <div class="input-field-wrapper">
-              <input type="number" step="any" placeholder="大盤" data-role="vix-input">
-              <span class="unit">pts</span>
-            </div>
-          </div>
-          <div class="input-col">
-            <label>VXN (科技)</label>
-            <div class="input-field-wrapper">
-              <input type="number" step="any" placeholder="科技" data-role="vxn-input">
-              <span class="unit">pts</span>
-            </div>
-          </div>
-          <button class="save-btn" data-role="save" style="align-self: flex-end; height: 30px;">更新</button>
-        </div>
-        
-        <div class="double-row-result">
-          <div class="double-row-item double-row-divider">
-            <span class="lbl">VXN / VIX 比率</span>
-            <span id="ratio-output-val" class="result-num-bold">—</span>
-          </div>
-          <div class="double-row-item">
-            <span class="lbl">避險溢價狀態</span>
-            <span id="ratio-output-warn" style="font-weight: bold;">—</span>
-          </div>
-        </div>
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error('Fetch failed');
+    
+    const parsed = await res.json();
+    const meta = parsed.chart.result[0].meta;
 
-        <div class="delta-info" data-role="delta-vix"></div>
-        <div class="ma-info" data-role="ma-vix"></div>
+    const targetPrice = meta.regularMarketPrice || meta.chartPreviousClose;
 
-        <div class="delta-info" data-role="delta-vxn"></div>
-        <div class="ma-info" data-role="ma-vxn"></div>
-
-        <div class="threshold-ref">${cfg.ref}</div>
-        <div class="reason">${cfg.reason}</div>
-        <div class="meta" data-role="meta">尚未更新</div>
-      `;
+    if (targetPrice) {
+      priceInput.value = Number(targetPrice).toFixed(2);
+      update();
     } else {
-      card.innerHTML = `
-        <div class="card-head">
-          <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
-          <span class="status-badge neutral" data-role="badge">尚無資料</span>
-        </div>
-        <div class="input-row">
-          <input type="number" step="any" placeholder="輸入最新數值" data-role="input">
-          <span class="unit">${cfg.unit}</span>
-          <button class="save-btn" data-role="save">更新</button>
-        </div>
-        <div class="delta-info" data-role="delta"></div>
-        <div class="ma-info" data-role="ma"></div>
-        <div class="threshold-ref">${cfg.ref}</div>
-        <div class="reason">${cfg.reason}</div>
-        <div class="meta" data-role="meta">尚未更新</div>
-      `;
+      throw new Error('No price found');
     }
-
-    const badge = card.querySelector('[data-role="badge"]');
-    const meta = card.querySelector('[data-role="meta"]');
-    const saveBtn = card.querySelector('[data-role="save"]');
-
-    function applyStatus(status){
-      card.dataset.status = status;
-      badge.className = 'status-badge ' + status;
-      badge.textContent = STATUS_LABEL[status];
-    }
-
-    async function refresh(){
-      const rec = await loadMetric(cfg.id);
-      const historyList = await loadHistory(cfg.id);
-      
-      if (cfg.isDouble) {
-        const vixIn = card.querySelector('[data-role="vix-input"]');
-        const vxnIn = card.querySelector('[data-role="vxn-input"]');
-        const ratioValOut = card.querySelector('#ratio-output-val');
-        const ratioWarnOut = card.querySelector('#ratio-output-warn');
-        const deltaVixEl = card.querySelector('[data-role="delta-vix"]');
-        const deltaVxnEl = card.querySelector('[data-role="delta-vxn"]');
-        const maVixEl = card.querySelector('[data-role="ma-vix"]');
-        const maVxnEl = card.querySelector('[data-role="ma-vxn"]');
-        
-        if (rec && rec.vix != null && rec.vxn != null) {
-          vixIn.value = rec.vix;
-          vxnIn.value = rec.vxn;
-          meta.textContent = fmtTime(rec.date);
-          
-          const ratio = (rec.vxn / rec.vix).toFixed(2);
-          const isWarn = ratio > 1.3;
-          
-          ratioValOut.textContent = ratio;
-          if (isWarn) {
-            ratioWarnOut.innerHTML = `<span style="color: var(--accent-dim);">⚠️ 科技股避險溢價偏高！</span>`;
-          } else {
-            ratioWarnOut.innerHTML = `<span style="color: var(--green);">🟢 科技股溢價正常</span>`;
-          }
-          if(deltaVixEl) deltaVixEl.innerHTML = 'VIX ' + fmtDeltaLine(rec.prevVix, rec.vix, '', rec.prevDay);
-          if(deltaVxnEl) deltaVxnEl.innerHTML = 'VXN ' + fmtDeltaLine(rec.prevVxn, rec.vxn, '', rec.prevDay);
-          
-          if(maVixEl) maVixEl.innerHTML = 'VIX ' + fmtMALine(historyList, 'vix', 'pts');
-          if(maVxnEl) maVxnEl.innerHTML = 'VXN ' + fmtMALine(historyList, 'vxn', 'pts');
-
-          applyStatus(cfg.calc(rec.vix, rec.vxn));
-        } else {
-          ratioValOut.textContent = '—';
-          ratioWarnOut.textContent = '—';
-          if(deltaVixEl) deltaVixEl.innerHTML = '<span class="empty">尚無資料</span>';
-          if(deltaVxnEl) deltaVxnEl.innerHTML = '<span class="empty">尚無資料</span>';
-          if(maVixEl) maVixEl.innerHTML = fmtMALine([], 'vix', 'pts');
-          if(maVxnEl) maVxnEl.innerHTML = fmtMALine([], 'vxn', 'pts');
-          applyStatus('neutral');
-        }
-      } else {
-        const input = card.querySelector('[data-role="input"]');
-        const deltaEl = card.querySelector('[data-role="delta"]');
-        const maEl = card.querySelector('[data-role="ma"]');
-        if(rec && rec.value != null){
-          input.value = rec.value;
-          meta.textContent = fmtTime(rec.date);
-          let d = null;
-          if(rec.prevValue != null){
-            d = rec.value - rec.prevValue;
-          }
-          if(deltaEl) deltaEl.innerHTML = fmtDeltaLine(rec.prevValue, rec.value, cfg.unit === 'USD' ? '' : cfg.unit, rec.prevDay);
-          if(maEl) maEl.innerHTML = fmtMALine(historyList, 'value', cfg.unit === 'USD' ? '' : cfg.unit);
-
-          const pctMetrics = ['dxy', 'usdjpy', 'gold', 'oil'];
-          const deltaParam = pctMetrics.includes(cfg.id) ? (d!=null? (d/(rec.prevValue||1)*100) : null) : d;
-          const status = cfg.calc(rec.value, deltaParam);
-          applyStatus(status);
-        } else {
-          if(deltaEl) deltaEl.innerHTML = '<span class="empty">尚無資料</span>';
-          if(maEl) maEl.innerHTML = fmtMALine([], 'value', cfg.unit === 'USD' ? '' : cfg.unit);
-          applyStatus('neutral');
-        }
-      }
-    }
-
-    saveBtn.addEventListener('click', async ()=>{
-      if (cfg.isDouble) {
-        const vixIn = card.querySelector('[data-role="vix-input"]');
-        const vxnIn = card.querySelector('[data-role="vxn-input"]');
-        const vixVal = parseFloat(vixIn.value);
-        const vxnVal = parseFloat(vxnIn.value);
-        
-        if (isNaN(vixVal) || isNaN(vxnVal)) { showToast('請完整填寫 VIX 與 VXN 數值'); return; }
-        
-        const oldRec = await loadMetric(cfg.id);
-        const newRec = buildDayLockedRecord(oldRec, {vix: vixVal, vxn: vxnVal});
-        const ok = await saveMetric(cfg.id, newRec);
-        await saveHistory(cfg.id, {vix: vixVal, vxn: vxnVal});
-
-        if (ok) {
-          showToast('波動率數據已更新並存入歷史');
-          await refresh();
-          updateSummary();
-        } else {
-          showToast('儲存失敗，請稍後再試');
-        }
-      } else {
-        const input = card.querySelector('[data-role="input"]');
-        const val = parseFloat(input.value);
-        if(isNaN(val)){ showToast('請輸入有效數值'); return; }
-        const oldRec = await loadMetric(cfg.id);
-        const newRec = buildDayLockedRecord(oldRec, {value: val});
-        const ok = await saveMetric(cfg.id, newRec);
-        await saveHistory(cfg.id, {value: val});
-
-        if(ok){
-          showToast(cfg.name + ' 已更新並存入歷史');
-          await refresh();
-          updateSummary();
-          if (cfg.id === 'us10y' && typeof window.refreshERP === 'function') {
-            window.refreshERP();
-          }
-        } else {
-          showToast('儲存失敗，請稍後再試');
-        }
-      }
-    });
-
-    refresh();
-    return {card, refresh};
-  }
-
-  const allCards = [];
-
-  function renderGrid(gridId, list){
-    const grid = document.getElementById(gridId);
-    list.forEach(cfg=>{
-      const {card, refresh} = buildCard(cfg);
-      grid.appendChild(card);
-      allCards.push({cfg, card, refresh});
-    });
-  }
-  renderGrid('grid-t1', TIER1);
-  renderGrid('grid-t2', TIER2);
-
-  // ---------- Net Liquidity (Tier 3) ----------
-  const liqContainer = document.getElementById('liqContainer');
-  liqContainer.innerHTML = `
-    <div class="liq-card" id="liqCard" data-status="neutral">
-      <div class="card-head">
-        <div class="card-name">Net Liquidity<span class="en">WALCL − TGA − ON RRP</span></div>
-        <span class="status-badge neutral" id="liqBadge">尚無資料</span>
-      </div>
-      <div class="liq-grid">
-        <div class="liq-field">
-          <label>WALCL 總資產 ($B)</label>
-          <input type="number" step="any" id="liq-walcl" placeholder="例如 6735">
-          <div class="grey-desc">官網是以百萬計，請除以 1,000 後輸入。例如：6,735,609百萬，請輸入 6735.6</div>
-        </div>
-        <div class="liq-field">
-          <label>TGA 財政部帳戶 ($B)</label>
-          <input type="number" step="any" id="liq-tga" placeholder="例如 749">
-          <div class="grey-desc">官網是以百萬計，請除以 1,000 後輸入。例如：749,244百萬，請輸入 749.2</div>
-        </div>
-        <div class="liq-field">
-          <label>ON RRP 隔夜逆回購 ($B)</label>
-          <input type="number" step="any" id="liq-rrp" placeholder="例如 0.28">
-          <div class="grey-desc">官網本身即為十億單位（Billions），可直接輸入，如：0.28</div>
-        </div>
-      </div>
-      <button class="save-btn" id="liqSave" style="padding:10px 20px;">更新並計算</button>
-      <div class="liq-result">
-        <div>
-          <div class="lbl">NET LIQUIDITY</div>
-          <div class="num" id="liqNum">—</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="lbl">較上次</div>
-          <div class="num" id="liqDelta" style="font-size:15px;">—</div>
-        </div>
-      </div>
-
-      <div class="trend-history-box">
-        <div class="trend-history-title">📈 近 12 週淨流動性走勢軌跡 ($B)</div>
-        <div class="trend-history-list" id="liqTrendList"></div>
-      </div>
-
-      <div class="threshold-ref">
-        ON RRP 緩衝：綠 &gt;200 ・ 黃 50–200 ・ 紅 &lt;50（緩衝耗盡，QT 將直接衝擊市場流動性）
-      </div>
-      <div class="reason">
-        真正影響市場的是淨流動性，而非單看 Fed 資產負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
-      </div>
-      <div class="meta" id="liqMeta">尚未更新</div>
-    </div>
-  `;
-
-  async function refreshLiq(){
-    const r_rec = await loadMetric('netliq');
-    const historyList = await loadHistory('netliq');
-    const badge = document.getElementById('liqBadge');
-    const num = document.getElementById('liqNum');
-    const deltaEl = document.getElementById('liqDelta');
-    const meta = document.getElementById('liqMeta');
-    const card = document.getElementById('liqCard');
-    const trendListEl = document.getElementById('liqTrendList');
-
-    if(r_rec && r_rec.walcl != null){
-      document.getElementById('liq-walcl').value = r_rec.walcl;
-      document.getElementById('liq-tga').value = r_rec.tga;
-      document.getElementById('liq-rrp').value = r_rec.rrp;
-      const net = r_rec.walcl - r_rec.tga - r_rec.rrp;
-      num.textContent = '$' + net.toLocaleString('en-US',{maximumFractionDigits:2}) + 'B';
-      meta.textContent = fmtTime(r_rec.date);
-      if(r_rec.prevNet != null){
-        const d = net - r_rec.prevNet;
-        deltaEl.textContent = (d>=0?'+':'') + d.toLocaleString('en-US',{maximumFractionDigits:2}) + 'B';
-        deltaEl.style.color = d < -100 ? 'var(--red)' : d < 0 ? 'var(--yellow)' : 'var(--green)';
-      } else {
-        deltaEl.textContent = '—';
-      }
-      
-      if(trendListEl) trendListEl.innerHTML = renderTrendChips(historyList.slice(-12), 'netVal', 'B');
-
-      let status = 'green';
-      if(r_rec.rrp < 50) status = 'red';
-      else if(r_rec.rrp < 200) status = 'yellow';
-      card.dataset.status = status;
-      badge.className = 'status-badge ' + status;
-      badge.textContent = STATUS_LABEL[status];
-    } else {
-      if(trendListEl) trendListEl.innerHTML = renderTrendChips([], 'netVal', 'B');
-      card.dataset.status = 'neutral';
-      badge.className = 'status-badge neutral';
-      badge.textContent = STATUS_LABEL['neutral'];
+  } catch (err) {
+    console.log('API 讀取問題，轉為手動模式', err);
+    if (!priceInput.value) {
+      priceInput.value = "99.20";
+      update();
     }
   }
+}
 
-  document.getElementById('liqSave').addEventListener('click', async ()=>{
-    const walcl = parseFloat(document.getElementById('liq-walcl').value);
-    const tga = parseFloat(document.getElementById('liq-tga').value);
-    const rrp = parseFloat(document.getElementById('liq-rrp').value);
-    if(isNaN(walcl) || isNaN(tga) || isNaN(rrp)){ showToast('請完整輸入三個數值'); return; }
-    const prevRec = await loadMetric('netliq');
-    const prevNet = prevRec ? (prevRec.walcl - prevRec.tga - prevRec.rrp) : null;
-    const netVal = walcl - tga - rrp;
-    
-    const ok = await saveMetric('netliq', {walcl, tga, rrp, prevNet, date: new Date().toISOString()});
-    await saveHistory('netliq', {netVal: netVal}, 12);
+function buildStrategyLevels(anchor) {
+  const list = [];
 
-    if(ok){
-      showToast('Net Liquidity 已更新並存入歷史');
-      await refreshLiq();
-      updateSummary();
-    } else {
-      showToast('儲存失敗，請稍後再試');
-    }
-  });
-
-  refreshLiq();
-
-  // ---------- SOFR - IORB Spread (Tier 3) ----------
-  const sofrContainer = document.getElementById('sofrContainer');
-  sofrContainer.innerHTML = `
-    <div class="liq-card" id="sofrCard" data-status="neutral">
-      <div class="card-head">
-        <div class="card-name">SOFR - IORB Spread<span class="en">SOFR 融資利率 − IORB 準備金利率</span></div>
-        <span class="status-badge neutral" id="sofrBadge">尚無資料</span>
-      </div>
-      <div class="liq-grid">
-        <div class="liq-field">
-          <label>SOFR 利率 (%)</label>
-          <input type="number" step="any" id="sofr-val" placeholder="例如 3.65">
-          <div class="grey-desc">請至 FRED 查詢 (SERIES: SOFR) 最新 Observations，例如 3.65</div>
-        </div>
-        <div class="liq-field">
-          <label>IORB 利率 (%)</label>
-          <input type="number" step="any" id="iorb-val" placeholder="例如 3.65">
-          <div class="grey-desc">請至 FRED 查詢 (SERIES: IORB) 最新 Observations，例如 3.65</div>
-        </div>
-      </div>
-      <button class="save-btn" id="sofrSave" style="padding:10px 20px;">更新並計算</button>
-      
-      <div class="double-row-result">
-        <div class="double-row-item double-row-divider">
-          <span class="lbl">隔夜利差 (SOFR − IORB)</span>
-          <span class="result-num-bold" id="sofrSpreadNum">—</span>
-        </div>
-        <div class="double-row-item">
-          <span class="lbl">流動性壓力評估</span>
-          <span id="sofrWarnText" style="font-weight: bold;">—</span>
-        </div>
-      </div>
-
-      <div class="threshold-ref">
-        利差門檻： 綠 ≤ 0.00% (資金順暢) ・ 黃 +0.01% ~ +0.10% (資金偏緊) ・ 紅 &gt; +0.10% (資金緊張)
-      </div>
-      <div class="reason">
-        ON RRP 緩衝墊耗盡後，真正決定市場是否「跳電」的指標。當 SOFR 顯著高於 IORB，代表銀行體系已出現資金流動性衰竭、高價搶錢的警訊。
-      </div>
-      <div class="meta" id="sofrMeta">尚未更新</div>
-    </div>
-  `;
-
-  async function refreshSOFR(){
-    const rec = await loadMetric('sofr_iorb');
-    const badge = document.getElementById('sofrBadge');
-    const spreadNum = document.getElementById('sofrSpreadNum');
-    const warnText = document.getElementById('sofrWarnText');
-    const meta = document.getElementById('sofrMeta');
-    const card = document.getElementById('sofrCard');
-
-    if (rec && rec.sofr != null && rec.iorb != null) {
-      document.getElementById('sofr-val').value = rec.sofr;
-      document.getElementById('iorb-val').value = rec.iorb;
-      meta.textContent = fmtTime(rec.date);
-
-      const spread = rec.sofr - rec.iorb;
-      spreadNum.textContent = (spread >= 0 ? '+' : '') + spread.toFixed(2) + '%';
-
-      let status = 'green';
-      if (spread > 0.10) {
-        status = 'red';
-        warnText.innerHTML = `<span style="color: var(--red);">🚨 銀行資金緊張高價搶錢！</span>`;
-      } else if (spread > 0.00) {
-        status = 'yellow';
-        warnText.innerHTML = `<span style="color: var(--accent-dim);">⚠️ 資金略為偏緊，摩擦升溫</span>`;
-      } else {
-        status = 'green';
-        warnText.innerHTML = `<span style="color: var(--green);">🟢 貨幣市場資金順暢</span>`;
-      }
-
-      card.dataset.status = status;
-      badge.className = 'status-badge ' + status;
-      badge.textContent = STATUS_LABEL[status];
-    } else {
-      spreadNum.textContent = '—';
-      warnText.textContent = '—';
-      card.dataset.status = 'neutral';
-      badge.className = 'status-badge neutral';
-      badge.textContent = STATUS_LABEL['neutral'];
-    }
-  }
-
-  document.getElementById('sofrSave').addEventListener('click', async ()=>{
-    const sofr = parseFloat(document.getElementById('sofr-val').value);
-    const iorb = parseFloat(document.getElementById('iorb-val').value);
-    if(isNaN(sofr) || isNaN(iorb)){ showToast('請完整輸入 SOFR 與 IORB 數值'); return; }
-    
-    const ok = await saveMetric('sofr_iorb', {sofr, iorb, date: new Date().toISOString()});
-    if(ok){
-      showToast('SOFR - IORB 利差已更新');
-      await refreshSOFR();
-      updateSummary();
-    } else {
-      showToast('儲存失敗，請稍後再試');
-    }
-  });
-
-  refreshSOFR();
-
-  // ---------- Equity Risk Premium (Tier 3) ----------
-  const erpContainer = document.getElementById('erpContainer');
-  erpContainer.innerHTML = `
-    <div class="liq-card" id="erpCard" data-status="neutral">
-      <div class="card-head">
-        <div class="card-name">Equity Risk Premium (ERP)<span class="en">S&P 500 Forward 盈餘殖利率 − 美債 10Y 殖利率</span></div>
-        <span class="status-badge neutral" id="erpBadge">尚無資料</span>
-      </div>
-      <div class="liq-grid">
-        <div class="liq-field">
-          <label>S&P 500 Forward PE</label>
-          <input type="number" step="any" id="erp-pe" placeholder="example 22.5">
-          <div class="grey-desc">請參考 Yardeni Research 週報或 FactSet 報告取得最新 Forward PE。如輸入 22.5</div>
-        </div>
-        <div class="liq-field">
-          <label>美債 10Y 殖利率 (%) <span style="color: var(--accent-dim);">[自動連動]</span></label>
-          <input type="number" step="any" id="erp-bond" disabled placeholder="需先至 Tier 1 更新數據">
-          <div class="grey-desc">本欄位會自動讀取您在 Tier 1 輸入的美債 10Y 最新數據，無需重複輸入。</div>
-        </div>
-      </div>
-      <button class="save-btn" id="erpSave" style="padding:10px 20px;">更新並計算</button>
-      
-      <div class="double-row-result">
-        <div class="double-row-item double-row-divider">
-          <span class="lbl">S&P 500 FORWARD 盈餘殖利率 (1/PE)</span>
-          <span class="result-num-bold" id="erpYieldNum">—</span>
-        </div>
-        <div class="double-row-item">
-          <span class="lbl">實質 ERP (盈餘殖利率 − 美債10Y)</span>
-          <span class="result-num-bold" id="erpValNum">—</span>
-        </div>
-      </div>
-
-      <div class="trend-history-box">
-        <div class="trend-history-title">📊 近 10 次實質 ERP 走勢軌跡 (%)</div>
-        <div class="trend-history-list" id="erpTrendList"></div>
-      </div>
-
-      <div class="threshold-ref">
-        ERP 門檻： 綠 &gt; +1.0% (正常) ・ 黃 0.0% ~ +1.0% (補償偏薄) ・ 紅 &lt; 0.0% (股債回報倒掛)
-      </div>
-      <div class="reason">
-        股權風險溢酬 (ERP) 是評估「買股票」相對於「買無風險美債」性價比的終極指標。當 ERP 進入黃、紅燈區，代表高利率下股票的風險補償極薄，甚至出現倒掛，此時應提防股市估值修正，並適度將資金再平衡配置至債券等避險資產。
-      </div>
-      <div class="meta" id="erpMeta">尚未更新</div>
-    </div>
-  `;
-
-  window.refreshERP = async function() {
-    const erpRec = await loadMetric('erp');
-    const bondRec = await loadMetric('us10y');
-    const historyList = await loadHistory('erp');
-    
-    const peIn = document.getElementById('erp-pe');
-    const bondIn = document.getElementById('erp-bond');
-    
-    const badge = document.getElementById('erpBadge');
-    const yieldNum = document.getElementById('erpYieldNum');
-    const erpValNum = document.getElementById('erpValNum');
-    const meta = document.getElementById('erpMeta');
-    const card = document.getElementById('erpCard');
-    const trendListEl = document.getElementById('erpTrendList');
-
-    if (bondRec && bondRec.value != null) {
-      bondIn.value = bondRec.value;
-      bondIn.placeholder = "";
-    } else {
-      bondIn.value = "";
-      bondIn.placeholder = "請先至 Tier 1 更新數據";
-    }
-
-    if (erpRec && erpRec.pe != null) {
-      peIn.value = erpRec.pe;
-      meta.textContent = fmtTime(erpRec.date);
-      
-      const bondVal = bondRec ? bondRec.value : null;
-      if (bondVal != null) {
-        const earningYield = (1 / erpRec.pe) * 100;
-        const erpVal = earningYield - bondVal;
-        
-        yieldNum.textContent = earningYield.toFixed(2) + '%';
-        
-        const isWarn = erpVal < 0;
-        erpValNum.innerHTML = (erpVal >= 0 ? '+' : '') + erpVal.toFixed(2) + '%' + 
-                              (isWarn ? ' <span style="font-size: 13px; color: var(--red); font-weight: bold; margin-left: 8px;">🚨 股債回報倒掛！</span>' : '');
-        
-        if(trendListEl) trendListEl.innerHTML = renderTrendChips(historyList.slice(-10), 'erpVal', '%');
-
-        let status = 'green';
-        if (erpVal < 0.0) status = 'red';
-        else if (erpVal <= 1.0) status = 'yellow';
-        
-        card.dataset.status = status;
-        badge.className = 'status-badge ' + status;
-        badge.textContent = STATUS_LABEL[status];
-      } else {
-        yieldNum.textContent = ((1 / erpRec.pe) * 100).toFixed(2) + '%';
-        erpValNum.innerHTML = `<span style="font-size: 13px; color: var(--yellow); font-weight: bold;">⚠️ 等候 Tier 1 美債數據</span>`;
-        if(trendListEl) trendListEl.innerHTML = renderTrendChips([], 'erpVal', '%');
-        card.dataset.status = 'neutral';
-        badge.className = 'status-badge neutral';
-        badge.textContent = '等候美債';
-      }
-    } else {
-      yieldNum.textContent = '—';
-      erpValNum.textContent = '—';
-      if(trendListEl) trendListEl.innerHTML = renderTrendChips([], 'erpVal', '%');
-      card.dataset.status = 'neutral';
-      badge.className = 'status-badge neutral';
-      badge.textContent = '尚無資料';
-    }
-  }
-
-  document.getElementById('erpSave').addEventListener('click', async ()=>{
-    const pe = parseFloat(document.getElementById('erp-pe').value);
-    if (isNaN(pe) || pe <= 0) { showToast('請輸入有效的 Forward PE 數值'); return; }
-    
-    const bondRec = await loadMetric('us10y');
-    const bondVal = bondRec ? bondRec.value : null;
-    const erpVal = bondVal != null ? ((1 / pe) * 100 - bondVal) : null;
-
-    const ok = await saveMetric('erp', {pe, date: new Date().toISOString()});
-    if (erpVal != null) {
-      await saveHistory('erp', {erpVal: erpVal}, 10);
-    }
-
-    if (ok) {
-      showToast('ERP 數據已更新並存入歷史');
-      await window.refreshERP();
-      updateSummary();
-    } else {
-      showToast('儲存失敗，請稍後再試');
-    }
-  });
-
-  window.refreshERP();
-
-  // ---------- 頂部儀表板統計函數 ----------
-  function updateSummary(){
-    let g=0,y=0,r=0;
-    
-    const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'usdjpy', 'us10y', 'us30y', 'gold', 'oil'];
-    const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix', 'skew'];
-    
-    allCards.forEach(({card})=>{
-      const cid = card.dataset.id;
-      const s = card.dataset.status;
-      
-      if (currentActiveTab === 't1' && !tier1Ids.includes(cid)) return;
-      if (currentActiveTab === 't2' && !tier2Ids.includes(cid)) return;
-      if (currentActiveTab === 't3') return;
-
-      if (s === 'neutral') return;
-
-      const rawVal = localStorage.getItem('metric:' + cid);
-      if (!rawVal) return; 
-
-      if (s === 'green') g++;
-      else if (s === 'yellow') y++;
-      else if (s === 'red') r++;
-    });
-    
-    if (currentActiveTab === 't3') {
-      const liqCard = document.getElementById('liqCard');
-      if(liqCard && liqCard.dataset.status !== 'neutral' && localStorage.getItem('metric:netliq')){
-        const s = liqCard.dataset.status;
-        if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
-      }
-
-      const sofrCard = document.getElementById('sofrCard');
-      if(sofrCard && sofrCard.dataset.status !== 'neutral' && localStorage.getItem('metric:sofr_iorb')){
-        const s = sofrCard.dataset.status;
-        if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
-      }
-      
-      const erpCard = document.getElementById('erpCard');
-      if(erpCard && erpCard.dataset.status !== 'neutral' && localStorage.getItem('metric:erp')){
-        const s = erpCard.dataset.status;
-        if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
-      }
-    }
-    
-    document.getElementById('cntGreen').textContent = g;
-    document.getElementById('cntYellow').textContent = y;
-    document.getElementById('cntRed').textContent = r;
-  }
-  
-  setTimeout(updateSummary, 400);
-
-  // ---------- tabs ----------
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-      
-      btn.classList.add('active');
-      const targetTab = btn.dataset.tab;
-      document.getElementById('panel-' + targetTab).classList.add('active');
-      
-      currentActiveTab = targetTab;
-      updateSummary();
+  // 左手 14 關
+  leftRatios.forEach((ratio, idx) => {
+    const price = Math.round(anchor * ratio * 100) / 100;
+    list.push({
+      type: 'left',
+      name: `左手-第${idx + 1}關`,
+      price: price,
+      discount: (price - anchor) / anchor,
+      shares: leftShares[idx],
+      key: `L_${idx + 1}`
     });
   });
 
-  // ---------- reset ----------
-  document.getElementById('resetBtn').addEventListener('click', async ()=>{
-    if(!confirm('確定要清除所有已儲存的歷史與數值嗎？此動作無法復原。')) return;
-    const ids = [...TIER1, ...TIER2].map(c=>c.id).concat(['netliq', 'sofr_iorb', 'erp']);
-    for(const id of ids){ await deleteMetric(id); }
-    showToast('已清除所有歷史數值');
-    setTimeout(()=>location.reload(), 800);
+  // 右手 11 關
+  rightRatios.forEach((ratio, idx) => {
+    const price = Math.round(anchor * ratio * 100) / 100;
+    list.push({
+      type: 'right',
+      name: `右手-第${idx + 1}關 (${Math.round(ratio * 100)}%)`,
+      price: price,
+      discount: (price - anchor) / anchor,
+      shares: rightShares[idx],
+      key: `R_${idx + 1}`
+    });
   });
 
-})();
+  // 依觸發價由高到低自動排序
+  list.sort((a, b) => b.price - a.price);
+
+  return list.map((item, index) => ({
+    ...item,
+    rank: index + 1
+  }));
+}
+
+function update() {
+  const anchor = parseFloat(anchorInput.value) || 116;
+  let price = parseFloat(priceInput.value);
+
+  if (isNaN(price)) {
+    price = anchor;
+  }
+
+  const levels = buildStrategyLevels(anchor);
+  const discountRatio = (anchor - price) / anchor;
+
+  let fgScore = Math.round(((1 - discountRatio - 0.70) / 0.30) * 100);
+  fgScore = Math.min(Math.max(fgScore, 0), 100);
+
+  scoreNum.textContent = priceInput.value ? `$${price.toFixed(2)}` : "連線中";
+
+  const angleDeg = 180 - (fgScore / 100) * 180;
+  const rad = angleDeg * Math.PI / 180;
+  const tipX = 250 + 165 * Math.cos(rad);
+  const tipY = 250 - 165 * Math.sin(rad);
+
+  needle.querySelector('line').setAttribute('x2', tipX.toFixed(1));
+  needle.querySelector('line').setAttribute('y2', tipY.toFixed(1));
+
+  let activeSectorIdx = Math.floor(fgScore / 20);
+  if (activeSectorIdx > 4) activeSectorIdx = 4;
+
+  for (let i = 0; i < 5; i++) {
+    const sectorEl = document.getElementById(`sector${i}`);
+    if (i === activeSectorIdx) {
+      sectorEl.style.fill = highlightColors[i].fill;
+      sectorEl.style.stroke = highlightColors[i].stroke;
+      sectorEl.style.strokeWidth = "3";
+    } else {
+      sectorEl.style.fill = "#f4f4f4";
+      sectorEl.style.stroke = "#ffffff";
+      sectorEl.style.strokeWidth = "3";
+    }
+  }
+
+  const triggeredLevels = levels.filter(l => price <= l.price);
+  const currentLevel = triggeredLevels[0];
+
+  actionCard.style.borderLeftColor = highlightColors[activeSectorIdx].stroke;
+
+  if (!priceInput.value) {
+    actionTitle.textContent = "資料連線中...";
+    actionText.innerHTML = "正在連線抓取 0050 最新價格，若等候過久可直接於上欄<b>手動輸入價格</b>。";
+  } else if (!currentLevel) {
+    actionTitle.textContent = "當前狀態：高價觀望區";
+    actionText.innerHTML = "目前股價高昂（無明顯折價），尚未觸發任何加碼關卡。建議<b>保持常態定期定額計畫</b>即可。";
+  } else {
+    actionTitle.textContent = `當前狀態：觸發 關卡 ${currentLevel.rank}（${currentLevel.name}）`;
+    const cost = Math.round(price * currentLevel.shares);
+    actionText.innerHTML = `當前價格 ($${price.toFixed(2)}) 已跌破 <b>${currentLevel.name} (${currentLevel.price.toFixed(2)}元)</b>！(拉回 ${(currentLevel.discount * 100).toFixed(2)}%)<br>` +
+                           `• 建議執行加碼：<b>${currentLevel.shares.toLocaleString()} 股</b><br>` +
+                           `• 預估需準備資金：約 <b>$${cost.toLocaleString()} 元</b>`;
+  }
+
+  mainTableBody.innerHTML = '';
+  lowPriceTableBody.innerHTML = '';
+
+  let hasTriggeredInLowGroup = false;
+
+  levels.forEach(l => {
+    const tr = document.createElement('tr');
+    const isTriggered = price <= l.price;
+    const isCurrent = currentLevel && currentLevel.key === l.key;
+
+    if (isCurrent) tr.className = 'active-row';
+    else if (isTriggered) tr.className = 'triggered-row';
+
+    const estCost = Math.round(l.price * l.shares);
+    const tagClass = l.type === 'left' ? 'tag-left' : 'tag-right';
+
+    tr.innerHTML = `
+      <td><b>${l.rank}</b></td>
+      <td><span class="tag ${tagClass}">${l.name}</span></td>
+      <td><b>${l.price.toFixed(2)}</b></td>
+      <td>${(l.discount * 100).toFixed(2)}%</td>
+      <td>${l.shares.toLocaleString()} 股</td>
+      <td>$${estCost.toLocaleString()}</td>
+      <td>${isCurrent ? '👈 當前到達' : (isTriggered ? '已通過' : '未到達')}</td>
+    `;
+
+    if (l.price >= 70) {
+      mainTableBody.appendChild(tr);
+    } else {
+      lowPriceTableBody.appendChild(tr);
+      if (isCurrent) {
+        hasTriggeredInLowGroup = true;
+      }
+    }
+  });
+
+  if (hasTriggeredInLowGroup && !isExpanded) {
+    toggleLowPriceRows();
+  } else {
+    updateToggleText();
+  }
+}
+
+anchorInput.addEventListener('input', update);
+priceInput.addEventListener('input', update);
+
+update();
+fetchLivePrice();
 </script>
+
 </body>
 </html>
