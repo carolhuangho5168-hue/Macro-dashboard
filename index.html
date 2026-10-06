@@ -452,7 +452,7 @@
     border-left: 5px solid var(--red);
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.18), 0 2px 4px rgba(220, 38, 38, 0.05);
   }
-  
+
   .liq-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
@@ -609,9 +609,9 @@
       reason:'同步 CNN 官方五大區間。當市場陷入「Fear」或「Greed」時點亮黃燈警戒；落入極端區間時點亮紅燈。',
       calc:(v)=> {
         if(v==null) return 'neutral';
-        if(v < 25 || v > 75) return 'red';      
-        if(v < 45 || v > 55) return 'yellow';   
-        return 'green';                         
+        if(v < 25 || v > 75) return 'red';
+        if(v < 45 || v > 55) return 'yellow';
+        return 'green';
       }
     },
     {id:'vix_vxn', name:'VIX & VXN 波動率雙指標', en:'MARKET VOLATILITY', isDouble: true,
@@ -712,4 +712,775 @@
     {id:'skew', name:'SKEW 指數 (1Y Percentile)', en:'CBOE SKEW INDEX', unit:'%',
       ref:'🟢 綠燈：< 60% (常態)<br>🟡 黃燈：60% ~ 85% (避險偏高)<br>🔴 紅燈：> 85% (極端尾端風險)',
       reason:'深度價外選擇權的偏斜定價,反映法人為「黑天鵝」尾端崩盤買保護的貴不貴。',
-      calc:(v)=> v==null?'neutral': v>85?'red': v>=60?'yellow':'green
+      calc:(v)=> v==null?'neutral': v>85?'red': v>=60?'yellow':'green'
+    },
+  ];
+
+  const STATUS_LABEL = {green:'綠燈',yellow:'黃燈',red:'紅燈',neutral:'尚無資料'};
+
+  // ---------- storage helpers ----------
+  async function loadMetric(id){
+    try{
+      const r = localStorage.getItem('metric:'+id);
+      return r ? JSON.parse(r) : null;
+    }catch(e){ return null; }
+  }
+  async function saveMetric(id, data){
+    try{
+      localStorage.setItem('metric:'+id, JSON.stringify(data));
+      return true;
+    }catch(e){ return false; }
+  }
+  async function deleteMetric(id){
+    try{
+      localStorage.removeItem('metric:'+id);
+      localStorage.removeItem('history:'+id);
+    }catch(e){}
+  }
+
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  async function loadHistory(id){
+    try{
+      const r = localStorage.getItem('history:'+id);
+      return r ? JSON.parse(r) : [];
+    }catch(e){ return []; }
+  }
+
+  async function saveHistory(id, entry, maxLen = 90){
+    let list = await loadHistory(id);
+    const today = todayStr();
+    const idx = list.findIndex(item => item.day === today);
+    if(idx >= 0){
+      list[idx] = Object.assign({}, list[idx], entry, {day: today});
+    } else {
+      list.push(Object.assign({}, entry, {day: today}));
+    }
+    if(list.length > maxLen) list = list.slice(list.length - maxLen);
+    localStorage.setItem('history:'+id, JSON.stringify(list));
+    return list;
+  }
+
+  function buildDayLockedRecord(oldRec, newFields){
+    const today = todayStr();
+    const rec = Object.assign({}, newFields, {day: today, date: new Date().toISOString()});
+    if(oldRec && oldRec.day === today){
+      Object.keys(oldRec).forEach(k=>{
+        if(k.indexOf('prev') === 0) rec[k] = oldRec[k];
+      });
+      rec.prevDay = oldRec.prevDay || null;
+    } else if(oldRec){
+      Object.keys(newFields).forEach(k=>{
+        rec['prev'+cap(k)] = (oldRec[k] != null) ? oldRec[k] : null;
+      });
+      rec.prevDay = oldRec.day || null;
+    } else {
+      Object.keys(newFields).forEach(k=>{
+        rec['prev'+cap(k)] = null;
+      });
+      rec.prevDay = null;
+    }
+    return rec;
+  }
+
+  function fmtDeltaLine(prevVal, curVal, unit, prevDay){
+    unit = unit || '';
+    if(prevVal == null || curVal == null){
+      return '<span class="empty">尚無前一交易日資料（今日為首次記錄）</span>';
+    }
+    const diff = curVal - prevVal;
+    const arrowClass = diff > 0 ? 'arrow-up' : (diff < 0 ? 'arrow-down' : 'arrow-flat');
+    const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '—');
+    const diffStr = (diff >= 0 ? '+' : '') + diff.toFixed(diff !== 0 && Math.abs(diff) < 1 ? 3 : 2);
+    return `前一交易日 (${prevDay||'—'}): ${prevVal}${unit} → 今日: ${curVal}${unit} `
+         + `<span class="${arrowClass}">${arrow} ${diffStr}${unit}</span>`;
+  }
+
+  function fmtMALine(historyList, key, unit){
+    unit = unit || '';
+    if(!historyList || historyList.length === 0){
+      return '<span>MA50: —</span><span>(累積 0/50 筆)</span>';
+    }
+    const validVals = historyList.map(item => item[key]).filter(v => v != null && !isNaN(v));
+    const count = validVals.length;
+    if(count === 0){
+      return '<span>MA50: —</span><span>(累積 0/50 筆)</span>';
+    }
+    const recentVals = validVals.slice(-50);
+    const sum = recentVals.reduce((a, b) => a + b, 0);
+    const avg = sum / recentVals.length;
+    const avgStr = avg.toFixed(avg < 1 && avg > -1 ? 3 : 2);
+    const label = count >= 50 ? 'MA50' : `均值(近${count}日)`;
+    return `<span>${label}: <span class="ma-val">${avgStr} ${unit}</span></span><span>(已累積 ${count}/50 筆)</span>`;
+  }
+
+  function renderTrendChips(historyList, key, unitStr){
+    if(!historyList || historyList.length === 0) return '<span style="color:var(--text-tertiary);">尚未累積歷史資料</span>';
+    return historyList.map(item => {
+      const v = item[key];
+      const valText = (v != null) ? (v >= 0 && key==='erpVal' ? '+' : '') + Number(v).toFixed(2) + unitStr : '—';
+      return `<div class="trend-chip"><span class="date">${item.day.slice(5)}</span><span class="val">${valText}</span></div>`;
+    }).join('');
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  function fmtTime(iso){
+    if(!iso) return '尚未更新';
+    const d = new Date(iso);
+    return '上次更新: ' + d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function buildCard(cfg){
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.status = 'neutral';
+    card.dataset.id = cfg.id;
+
+    if (cfg.isDouble) {
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
+          <span class="status-badge neutral" data-role="badge">尚無資料</span>
+        </div>
+        <div class="double-input-row">
+          <div class="input-col">
+            <label>VIX (大盤)</label>
+            <div class="input-field-wrapper">
+              <input type="number" step="any" placeholder="大盤" data-role="vix-input">
+              <span class="unit">pts</span>
+            </div>
+          </div>
+          <div class="input-col">
+            <label>VXN (科技)</label>
+            <div class="input-field-wrapper">
+              <input type="number" step="any" placeholder="科技" data-role="vxn-input">
+              <span class="unit">pts</span>
+            </div>
+          </div>
+          <button class="save-btn" data-role="save" style="align-self: flex-end; height: 30px;">更新</button>
+        </div>
+
+        <div class="double-row-result">
+          <div class="double-row-item double-row-divider">
+            <span class="lbl">VXN / VIX 比率</span>
+            <span id="ratio-output-val" class="result-num-bold">—</span>
+          </div>
+          <div class="double-row-item">
+            <span class="lbl">避險溢價狀態</span>
+            <span id="ratio-output-warn" style="font-weight: bold;">—</span>
+          </div>
+        </div>
+
+        <div class="delta-info" data-role="delta-vix"></div>
+        <div class="ma-info" data-role="ma-vix"></div>
+
+        <div class="delta-info" data-role="delta-vxn"></div>
+        <div class="ma-info" data-role="ma-vxn"></div>
+
+        <div class="threshold-ref">${cfg.ref}</div>
+        <div class="reason">${cfg.reason}</div>
+        <div class="meta" data-role="meta">尚未更新</div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="card-name">${cfg.name}<span class="en">${cfg.en}</span></div>
+          <span class="status-badge neutral" data-role="badge">尚無資料</span>
+        </div>
+        <div class="input-row">
+          <input type="number" step="any" placeholder="輸入最新數值" data-role="input">
+          <span class="unit">${cfg.unit}</span>
+          <button class="save-btn" data-role="save">更新</button>
+        </div>
+        <div class="delta-info" data-role="delta"></div>
+        <div class="ma-info" data-role="ma"></div>
+        <div class="threshold-ref">${cfg.ref}</div>
+        <div class="reason">${cfg.reason}</div>
+        <div class="meta" data-role="meta">尚未更新</div>
+      `;
+    }
+
+    const badge = card.querySelector('[data-role="badge"]');
+    const meta = card.querySelector('[data-role="meta"]');
+    const saveBtn = card.querySelector('[data-role="save"]');
+
+    function applyStatus(status){
+      card.dataset.status = status;
+      badge.className = 'status-badge ' + status;
+      badge.textContent = STATUS_LABEL[status];
+    }
+
+    async function refresh(){
+      const rec = await loadMetric(cfg.id);
+      const historyList = await loadHistory(cfg.id);
+
+      if (cfg.isDouble) {
+        const vixIn = card.querySelector('[data-role="vix-input"]');
+        const vxnIn = card.querySelector('[data-role="vxn-input"]');
+        const ratioValOut = card.querySelector('#ratio-output-val');
+        const ratioWarnOut = card.querySelector('#ratio-output-warn');
+        const deltaVixEl = card.querySelector('[data-role="delta-vix"]');
+        const deltaVxnEl = card.querySelector('[data-role="delta-vxn"]');
+        const maVixEl = card.querySelector('[data-role="ma-vix"]');
+        const maVxnEl = card.querySelector('[data-role="ma-vxn"]');
+
+        if (rec && rec.vix != null && rec.vxn != null) {
+          vixIn.value = rec.vix;
+          vxnIn.value = rec.vxn;
+          meta.textContent = fmtTime(rec.date);
+
+          const ratio = (rec.vxn / rec.vix).toFixed(2);
+          const isWarn = ratio > 1.3;
+
+          ratioValOut.textContent = ratio;
+          if (isWarn) {
+            ratioWarnOut.innerHTML = `<span style="color: var(--accent-dim);">⚠️ 科技股避險溢價偏高！</span>`;
+          } else {
+            ratioWarnOut.innerHTML = `<span style="color: var(--green);">🟢 科技股溢價正常</span>`;
+          }
+          if(deltaVixEl) deltaVixEl.innerHTML = 'VIX ' + fmtDeltaLine(rec.prevVix, rec.vix, '', rec.prevDay);
+          if(deltaVxnEl) deltaVxnEl.innerHTML = 'VXN ' + fmtDeltaLine(rec.prevVxn, rec.vxn, '', rec.prevDay);
+
+          if(maVixEl) maVixEl.innerHTML = 'VIX ' + fmtMALine(historyList, 'vix', 'pts');
+          if(maVxnEl) maVxnEl.innerHTML = 'VXN ' + fmtMALine(historyList, 'vxn', 'pts');
+
+          applyStatus(cfg.calc(rec.vix, rec.vxn));
+        } else {
+          ratioValOut.textContent = '—';
+          ratioWarnOut.textContent = '—';
+          if(deltaVixEl) deltaVixEl.innerHTML = '<span class="empty">尚無資料</span>';
+          if(deltaVxnEl) deltaVxnEl.innerHTML = '<span class="empty">尚無資料</span>';
+          if(maVixEl) maVixEl.innerHTML = fmtMALine([], 'vix', 'pts');
+          if(maVxnEl) maVxnEl.innerHTML = fmtMALine([], 'vxn', 'pts');
+          applyStatus('neutral');
+        }
+      } else {
+        const input = card.querySelector('[data-role="input"]');
+        const deltaEl = card.querySelector('[data-role="delta"]');
+        const maEl = card.querySelector('[data-role="ma"]');
+        if(rec && rec.value != null){
+          input.value = rec.value;
+          meta.textContent = fmtTime(rec.date);
+          let d = null;
+          if(rec.prevValue != null){
+            d = rec.value - rec.prevValue;
+          }
+          if(deltaEl) deltaEl.innerHTML = fmtDeltaLine(rec.prevValue, rec.value, cfg.unit === 'USD' ? '' : cfg.unit, rec.prevDay);
+          if(maEl) maEl.innerHTML = fmtMALine(historyList, 'value', cfg.unit === 'USD' ? '' : cfg.unit);
+
+          const pctMetrics = ['dxy', 'usdjpy', 'gold', 'oil'];
+          const deltaParam = pctMetrics.includes(cfg.id) ? (d!=null? (d/(rec.prevValue||1)*100) : null) : d;
+          const status = cfg.calc(rec.value, deltaParam);
+          applyStatus(status);
+        } else {
+          if(deltaEl) deltaEl.innerHTML = '<span class="empty">尚無資料</span>';
+          if(maEl) maEl.innerHTML = fmtMALine([], 'value', cfg.unit === 'USD' ? '' : cfg.unit);
+          applyStatus('neutral');
+        }
+      }
+    }
+
+    saveBtn.addEventListener('click', async ()=>{
+      if (cfg.isDouble) {
+        const vixIn = card.querySelector('[data-role="vix-input"]');
+        const vxnIn = card.querySelector('[data-role="vxn-input"]');
+        const vixVal = parseFloat(vixIn.value);
+        const vxnVal = parseFloat(vxnIn.value);
+
+        if (isNaN(vixVal) || isNaN(vxnVal)) { showToast('請完整填寫 VIX 與 VXN 數值'); return; }
+
+        const oldRec = await loadMetric(cfg.id);
+        const newRec = buildDayLockedRecord(oldRec, {vix: vixVal, vxn: vxnVal});
+        const ok = await saveMetric(cfg.id, newRec);
+        await saveHistory(cfg.id, {vix: vixVal, vxn: vxnVal});
+
+        if (ok) {
+          showToast('波動率數據已更新並存入歷史');
+          await refresh();
+          updateSummary();
+        } else {
+          showToast('儲存失敗，請稍後再試');
+        }
+      } else {
+        const input = card.querySelector('[data-role="input"]');
+        const val = parseFloat(input.value);
+        if(isNaN(val)){ showToast('請輸入有效數值'); return; }
+        const oldRec = await loadMetric(cfg.id);
+        const newRec = buildDayLockedRecord(oldRec, {value: val});
+        const ok = await saveMetric(cfg.id, newRec);
+        await saveHistory(cfg.id, {value: val});
+
+        if(ok){
+          showToast(cfg.name + ' 已更新並存入歷史');
+          await refresh();
+          updateSummary();
+          if (cfg.id === 'us10y' && typeof window.refreshERP === 'function') {
+            window.refreshERP();
+          }
+        } else {
+          showToast('儲存失敗，請稍後再試');
+        }
+      }
+    });
+
+    refresh();
+    return {card, refresh};
+  }
+
+  const allCards = [];
+
+  function renderGrid(gridId, list){
+    const grid = document.getElementById(gridId);
+    list.forEach(cfg=>{
+      const {card, refresh} = buildCard(cfg);
+      grid.appendChild(card);
+      allCards.push({cfg, card, refresh});
+    });
+  }
+  renderGrid('grid-t1', TIER1);
+  renderGrid('grid-t2', TIER2);
+
+  // ---------- Net Liquidity (Tier 3) ----------
+  const liqContainer = document.getElementById('liqContainer');
+  liqContainer.innerHTML = `
+    <div class="liq-card" id="liqCard" data-status="neutral">
+      <div class="card-head">
+        <div class="card-name">Net Liquidity<span class="en">WALCL − TGA − ON RRP</span></div>
+        <span class="status-badge neutral" id="liqBadge">尚無資料</span>
+      </div>
+      <div class="liq-grid">
+        <div class="liq-field">
+          <label>WALCL 總資產 ($B)</label>
+          <input type="number" step="any" id="liq-walcl" placeholder="例如 6735">
+          <div class="grey-desc">官網是以百萬計，請除以 1,000 後輸入。例如：6,735,609百萬，請輸入 6735.6</div>
+        </div>
+        <div class="liq-field">
+          <label>TGA 財政部帳戶 ($B)</label>
+          <input type="number" step="any" id="liq-tga" placeholder="例如 749">
+          <div class="grey-desc">官網是以百萬計，請除以 1,000 後輸入。例如：749,244百萬，請輸入 749.2</div>
+        </div>
+        <div class="liq-field">
+          <label>ON RRP 隔夜逆回購 ($B)</label>
+          <input type="number" step="any" id="liq-rrp" placeholder="例如 0.28">
+          <div class="grey-desc">官網本身即為十億單位（Billions），可直接輸入，如：0.28</div>
+        </div>
+      </div>
+      <button class="save-btn" id="liqSave" style="padding:10px 20px;">更新並計算</button>
+      <div class="liq-result">
+        <div>
+          <div class="lbl">NET LIQUIDITY</div>
+          <div class="num" id="liqNum">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="lbl">較上次</div>
+          <div class="num" id="liqDelta" style="font-size:15px;">—</div>
+        </div>
+      </div>
+
+      <div class="trend-history-box">
+        <div class="trend-history-title">📈 近 12 週淨流動性走勢軌跡 ($B)</div>
+        <div class="trend-history-list" id="liqTrendList"></div>
+      </div>
+
+      <div class="threshold-ref">
+        ON RRP 緩衝：綠 &gt;200 ・ 黃 50–200 ・ 紅 &lt;50（緩衝耗盡，QT 將直接衝擊市場流動性）
+      </div>
+      <div class="reason">
+        真正影響市場的是淨流動性，而非單看 Fed 資產負債表總量。TGA 與 ON RRP 是吸收/釋放流動性的兩個水管。2022–2026 年 QT 期間 ON RRP 釋出的資金抵銷了縮表效果，但目前 ON RRP 緩衝已接近耗盡 — 這是 2022 年以來首次，意味著後續 QT 若持續，將不再有緩衝墊可抵銷，需列為結構性追蹤重點。
+      </div>
+      <div class="meta" id="liqMeta">尚未更新</div>
+    </div>
+  `;
+
+  async function refreshLiq(){
+    const r_rec = await loadMetric('netliq');
+    const historyList = await loadHistory('netliq');
+    const badge = document.getElementById('liqBadge');
+    const num = document.getElementById('liqNum');
+    const deltaEl = document.getElementById('liqDelta');
+    const meta = document.getElementById('liqMeta');
+    const card = document.getElementById('liqCard');
+    const trendListEl = document.getElementById('liqTrendList');
+
+    if(r_rec && r_rec.walcl != null){
+      document.getElementById('liq-walcl').value = r_rec.walcl;
+      document.getElementById('liq-tga').value = r_rec.tga;
+      document.getElementById('liq-rrp').value = r_rec.rrp;
+      const net = r_rec.walcl - r_rec.tga - r_rec.rrp;
+      num.textContent = '$' + net.toLocaleString('en-US',{maximumFractionDigits:2}) + 'B';
+      meta.textContent = fmtTime(r_rec.date);
+      if(r_rec.prevNet != null){
+        const d = net - r_rec.prevNet;
+        deltaEl.textContent = (d>=0?'+':'') + d.toLocaleString('en-US',{maximumFractionDigits:2}) + 'B';
+        deltaEl.style.color = d < -100 ? 'var(--red)' : d < 0 ? 'var(--yellow)' : 'var(--green)';
+      } else {
+        deltaEl.textContent = '—';
+      }
+
+      if(trendListEl) trendListEl.innerHTML = renderTrendChips(historyList.slice(-12), 'netVal', 'B');
+
+      let status = 'green';
+      if(r_rec.rrp < 50) status = 'red';
+      else if(r_rec.rrp < 200) status = 'yellow';
+      card.dataset.status = status;
+      badge.className = 'status-badge ' + status;
+      badge.textContent = STATUS_LABEL[status];
+    } else {
+      if(trendListEl) trendListEl.innerHTML = renderTrendChips([], 'netVal', 'B');
+      card.dataset.status = 'neutral';
+      badge.className = 'status-badge neutral';
+      badge.textContent = STATUS_LABEL['neutral'];
+    }
+  }
+
+  document.getElementById('liqSave').addEventListener('click', async ()=>{
+    const walcl = parseFloat(document.getElementById('liq-walcl').value);
+    const tga = parseFloat(document.getElementById('liq-tga').value);
+    const rrp = parseFloat(document.getElementById('liq-rrp').value);
+    if(isNaN(walcl) || isNaN(tga) || isNaN(rrp)){ showToast('請完整輸入三個數值'); return; }
+    const prevRec = await loadMetric('netliq');
+    const prevNet = prevRec ? (prevRec.walcl - prevRec.tga - prevRec.rrp) : null;
+    const netVal = walcl - tga - rrp;
+
+    const ok = await saveMetric('netliq', {walcl, tga, rrp, prevNet, date: new Date().toISOString()});
+    await saveHistory('netliq', {netVal: netVal}, 12);
+
+    if(ok){
+      showToast('Net Liquidity 已更新並存入歷史');
+      await refreshLiq();
+      updateSummary();
+    } else {
+      showToast('儲存失敗，請稍後再試');
+    }
+  });
+
+  refreshLiq();
+
+  // ---------- SOFR - IORB Spread (Tier 3) ----------
+  const sofrContainer = document.getElementById('sofrContainer');
+  sofrContainer.innerHTML = `
+    <div class="liq-card" id="sofrCard" data-status="neutral">
+      <div class="card-head">
+        <div class="card-name">SOFR - IORB Spread<span class="en">SOFR 融資利率 − IORB 準備金利率</span></div>
+        <span class="status-badge neutral" id="sofrBadge">尚無資料</span>
+      </div>
+      <div class="liq-grid">
+        <div class="liq-field">
+          <label>SOFR 利率 (%)</label>
+          <input type="number" step="any" id="sofr-val" placeholder="例如 3.65">
+          <div class="grey-desc">請至 FRED 查詢 (SERIES: SOFR) 最新 Observations，例如 3.65</div>
+        </div>
+        <div class="liq-field">
+          <label>IORB 利率 (%)</label>
+          <input type="number" step="any" id="iorb-val" placeholder="例如 3.65">
+          <div class="grey-desc">請至 FRED 查詢 (SERIES: IORB) 最新 Observations，例如 3.65</div>
+        </div>
+      </div>
+      <button class="save-btn" id="sofrSave" style="padding:10px 20px;">更新並計算</button>
+
+      <div class="double-row-result">
+        <div class="double-row-item double-row-divider">
+          <span class="lbl">隔夜利差 (SOFR − IORB)</span>
+          <span class="result-num-bold" id="sofrSpreadNum">—</span>
+        </div>
+        <div class="double-row-item">
+          <span class="lbl">流動性壓力評估</span>
+          <span id="sofrWarnText" style="font-weight: bold;">—</span>
+        </div>
+      </div>
+
+      <div class="threshold-ref">
+        利差門檻： 綠 ≤ 0.00% (資金順暢) ・ 黃 +0.01% ~ +0.10% (資金偏緊) ・ 紅 &gt; +0.10% (資金緊張)
+      </div>
+      <div class="reason">
+        ON RRP 緩衝墊耗盡後，真正決定市場是否「跳電」的指標。當 SOFR 顯著高於 IORB，代表銀行體系已出現資金流動性衰竭、高價搶錢的警訊。
+      </div>
+      <div class="meta" id="sofrMeta">尚未更新</div>
+    </div>
+  `;
+
+  async function refreshSOFR(){
+    const rec = await loadMetric('sofr_iorb');
+    const badge = document.getElementById('sofrBadge');
+    const spreadNum = document.getElementById('sofrSpreadNum');
+    const warnText = document.getElementById('sofrWarnText');
+    const meta = document.getElementById('sofrMeta');
+    const card = document.getElementById('sofrCard');
+
+    if (rec && rec.sofr != null && rec.iorb != null) {
+      document.getElementById('sofr-val').value = rec.sofr;
+      document.getElementById('iorb-val').value = rec.iorb;
+      meta.textContent = fmtTime(rec.date);
+
+      const spread = rec.sofr - rec.iorb;
+      spreadNum.textContent = (spread >= 0 ? '+' : '') + spread.toFixed(2) + '%';
+
+      let status = 'green';
+      if (spread > 0.10) {
+        status = 'red';
+        warnText.innerHTML = `<span style="color: var(--red);">🚨 銀行資金緊張高價搶錢！</span>`;
+      } else if (spread > 0.00) {
+        status = 'yellow';
+        warnText.innerHTML = `<span style="color: var(--accent-dim);">⚠️ 資金略為偏緊，摩擦升溫</span>`;
+      } else {
+        status = 'green';
+        warnText.innerHTML = `<span style="color: var(--green);">🟢 貨幣市場資金順暢</span>`;
+      }
+
+      card.dataset.status = status;
+      badge.className = 'status-badge ' + status;
+      badge.textContent = STATUS_LABEL[status];
+    } else {
+      spreadNum.textContent = '—';
+      warnText.textContent = '—';
+      card.dataset.status = 'neutral';
+      badge.className = 'status-badge neutral';
+      badge.textContent = STATUS_LABEL['neutral'];
+    }
+  }
+
+  document.getElementById('sofrSave').addEventListener('click', async ()=>{
+    const sofr = parseFloat(document.getElementById('sofr-val').value);
+    const iorb = parseFloat(document.getElementById('iorb-val').value);
+    if(isNaN(sofr) || isNaN(iorb)){ showToast('請完整輸入 SOFR 與 IORB 數值'); return; }
+
+    const ok = await saveMetric('sofr_iorb', {sofr, iorb, date: new Date().toISOString()});
+    if(ok){
+      showToast('SOFR - IORB 利差已更新');
+      await refreshSOFR();
+      updateSummary();
+    } else {
+      showToast('儲存失敗，請稍後再試');
+    }
+  });
+
+  refreshSOFR();
+
+  // ---------- Equity Risk Premium (Tier 3) ----------
+  const erpContainer = document.getElementById('erpContainer');
+  erpContainer.innerHTML = `
+    <div class="liq-card" id="erpCard" data-status="neutral">
+      <div class="card-head">
+        <div class="card-name">Equity Risk Premium (ERP)<span class="en">S&P 500 Forward 盈餘殖利率 − 美債 10Y 殖利率</span></div>
+        <span class="status-badge neutral" id="erpBadge">尚無資料</span>
+      </div>
+      <div class="liq-grid">
+        <div class="liq-field">
+          <label>S&P 500 Forward PE</label>
+          <input type="number" step="any" id="erp-pe" placeholder="example 22.5">
+          <div class="grey-desc">請參考 Yardeni Research 週報或 FactSet 報告取得最新 Forward PE。如輸入 22.5</div>
+        </div>
+        <div class="liq-field">
+          <label>美債 10Y 殖利率 (%) <span style="color: var(--accent-dim);">[自動連動]</span></label>
+          <input type="number" step="any" id="erp-bond" disabled placeholder="需先至 Tier 1 更新數據">
+          <div class="grey-desc">本欄位會自動讀取您在 Tier 1 輸入的美債 10Y 最新數據，無需重複輸入。</div>
+        </div>
+      </div>
+      <button class="save-btn" id="erpSave" style="padding:10px 20px;">更新並計算</button>
+
+      <div class="double-row-result">
+        <div class="double-row-item double-row-divider">
+          <span class="lbl">S&P 500 FORWARD 盈餘殖利率 (1/PE)</span>
+          <span class="result-num-bold" id="erpYieldNum">—</span>
+        </div>
+        <div class="double-row-item">
+          <span class="lbl">實質 ERP (盈餘殖利率 − 美債10Y)</span>
+          <span class="result-num-bold" id="erpValNum">—</span>
+        </div>
+      </div>
+
+      <div class="trend-history-box">
+        <div class="trend-history-title">📊 近 10 次實質 ERP 走勢軌跡 (%)</div>
+        <div class="trend-history-list" id="erpTrendList"></div>
+      </div>
+
+      <div class="threshold-ref">
+        ERP 門檻： 綠 &gt; +1.0% (正常) ・ 黃 0.0% ~ +1.0% (補償偏薄) ・ 紅 &lt; 0.0% (股債回報倒掛)
+      </div>
+      <div class="reason">
+        股權風險溢酬 (ERP) 是評估「買股票」相對於「買無風險美債」性價比的終極指標。當 ERP 進入黃、紅燈區，代表高利率下股票的風險補償極薄，甚至出現倒掛，此時應提防股市估值修正，並適度將資金再平衡配置至債券等避險資產。
+      </div>
+      <div class="meta" id="erpMeta">尚未更新</div>
+    </div>
+  `;
+
+  window.refreshERP = async function() {
+    const erpRec = await loadMetric('erp');
+    const bondRec = await loadMetric('us10y');
+    const historyList = await loadHistory('erp');
+
+    const peIn = document.getElementById('erp-pe');
+    const bondIn = document.getElementById('erp-bond');
+
+    const badge = document.getElementById('erpBadge');
+    const yieldNum = document.getElementById('erpYieldNum');
+    const erpValNum = document.getElementById('erpValNum');
+    const meta = document.getElementById('erpMeta');
+    const card = document.getElementById('erpCard');
+    const trendListEl = document.getElementById('erpTrendList');
+
+    if (bondRec && bondRec.value != null) {
+      bondIn.value = bondRec.value;
+      bondIn.placeholder = "";
+    } else {
+      bondIn.value = "";
+      bondIn.placeholder = "請先至 Tier 1 更新數據";
+    }
+
+    if (erpRec && erpRec.pe != null) {
+      peIn.value = erpRec.pe;
+      meta.textContent = fmtTime(erpRec.date);
+
+      const bondVal = bondRec ? bondRec.value : null;
+      if (bondVal != null) {
+        const earningYield = (1 / erpRec.pe) * 100;
+        const erpVal = earningYield - bondVal;
+
+        yieldNum.textContent = earningYield.toFixed(2) + '%';
+
+        const isWarn = erpVal < 0;
+        erpValNum.innerHTML = (erpVal >= 0 ? '+' : '') + erpVal.toFixed(2) + '%' +
+                              (isWarn ? ' <span style="font-size: 13px; color: var(--red); font-weight: bold; margin-left: 8px;">🚨 股債回報倒掛！</span>' : '');
+
+        if(trendListEl) trendListEl.innerHTML = renderTrendChips(historyList.slice(-10), 'erpVal', '%');
+
+        let status = 'green';
+        if (erpVal < 0.0) status = 'red';
+        else if (erpVal <= 1.0) status = 'yellow';
+
+        card.dataset.status = status;
+        badge.className = 'status-badge ' + status;
+        badge.textContent = STATUS_LABEL[status];
+      } else {
+        yieldNum.textContent = ((1 / erpRec.pe) * 100).toFixed(2) + '%';
+        erpValNum.innerHTML = `<span style="font-size: 13px; color: var(--yellow); font-weight: bold;">⚠️ 等候 Tier 1 美債數據</span>`;
+        if(trendListEl) trendListEl.innerHTML = renderTrendChips([], 'erpVal', '%');
+        card.dataset.status = 'neutral';
+        badge.className = 'status-badge neutral';
+        badge.textContent = '等候美債';
+      }
+    } else {
+      yieldNum.textContent = '—';
+      erpValNum.textContent = '—';
+      if(trendListEl) trendListEl.innerHTML = renderTrendChips([], 'erpVal', '%');
+      card.dataset.status = 'neutral';
+      badge.className = 'status-badge neutral';
+      badge.textContent = '尚無資料';
+    }
+  }
+
+  document.getElementById('erpSave').addEventListener('click', async ()=>{
+    const pe = parseFloat(document.getElementById('erp-pe').value);
+    if (isNaN(pe) || pe <= 0) { showToast('請輸入有效的 Forward PE 數值'); return; }
+
+    const bondRec = await loadMetric('us10y');
+    const bondVal = bondRec ? bondRec.value : null;
+    const erpVal = bondVal != null ? ((1 / pe) * 100 - bondVal) : null;
+
+    const ok = await saveMetric('erp', {pe, date: new Date().toISOString()});
+    if (erpVal != null) {
+      await saveHistory('erp', {erpVal: erpVal}, 10);
+    }
+
+    if (ok) {
+      showToast('ERP 數據已更新並存入歷史');
+      await window.refreshERP();
+      updateSummary();
+    } else {
+      showToast('儲存失敗，請稍後再試');
+    }
+  });
+
+  window.refreshERP();
+
+  // ---------- 頂部儀表板統計函數 ----------
+  function updateSummary(){
+    let g=0,y=0,r=0;
+
+    const tier1Ids = ['fg', 'vix_vxn', 'dxy', 'usdjpy', 'us10y', 'us30y', 'gold', 'oil'];
+    const tier2Ids = ['move', 'hyoas', 't10y2y', 'vvix', 'skew'];
+
+    allCards.forEach(({card})=>{
+      const cid = card.dataset.id;
+      const s = card.dataset.status;
+
+      if (currentActiveTab === 't1' && !tier1Ids.includes(cid)) return;
+      if (currentActiveTab === 't2' && !tier2Ids.includes(cid)) return;
+      if (currentActiveTab === 't3') return;
+
+      if (s === 'neutral') return;
+
+      const rawVal = localStorage.getItem('metric:' + cid);
+      if (!rawVal) return;
+
+      if (s === 'green') g++;
+      else if (s === 'yellow') y++;
+      else if (s === 'red') r++;
+    });
+
+    if (currentActiveTab === 't3') {
+      const liqCard = document.getElementById('liqCard');
+      if(liqCard && liqCard.dataset.status !== 'neutral' && localStorage.getItem('metric:netliq')){
+        const s = liqCard.dataset.status;
+        if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
+      }
+
+      const sofrCard = document.getElementById('sofrCard');
+      if(sofrCard && sofrCard.dataset.status !== 'neutral' && localStorage.getItem('metric:sofr_iorb')){
+        const s = sofrCard.dataset.status;
+        if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
+      }
+
+      const erpCard = document.getElementById('erpCard');
+      if(erpCard && erpCard.dataset.status !== 'neutral' && localStorage.getItem('metric:erp')){
+        const s = erpCard.dataset.status;
+        if(s==='green') g++; else if(s==='yellow') y++; else if(s==='red') r++;
+      }
+    }
+
+    document.getElementById('cntGreen').textContent = g;
+    document.getElementById('cntYellow').textContent = y;
+    document.getElementById('cntRed').textContent = r;
+  }
+
+  setTimeout(updateSummary, 400);
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetTab = btn.dataset.tab;
+      document.getElementById('panel-' + targetTab).classList.add('active');
+
+      currentActiveTab = targetTab;
+      updateSummary();
+    });
+  });
+
+  // ---------- reset ----------
+  document.getElementById('resetBtn').addEventListener('click', async ()=>{
+    if(!confirm('確定要清除所有已儲存的歷史與數值嗎？此動作無法復原。')) return;
+    const ids = [...TIER1, ...TIER2].map(c=>c.id).concat(['netliq', 'sofr_iorb', 'erp']);
+    for(const id of ids){ await deleteMetric(id); }
+    showToast('已清除所有歷史數值');
+    setTimeout(()=>location.reload(), 800);
+  });
+
+})();
+</script>
+</body>
+</html>
